@@ -131,7 +131,7 @@ strengths, leaf translucency).
 | 10 | Terrain height undulation | Skipped | Hardscape overlays (apron/street/paths/river) sit at fixed y — displacement would make them float/clip; tiling breakup handled by macro-noise + blades + litter |
 | 11 | Blob contact shadows under trees | Skipped | GTAO + working 2048 px shadows already ground objects; blobs would double-darken |
 | 12 | Idle camera drift vs "interactions untouched" | Bounded breathing delta (±5 cm); autoRotate semantics left exactly as before | Satisfies "subtle life" without changing control behavior |
-| 13 | Wind on leaf shadow (customDepthMaterial) | Skipped | Leaf shadows are soft blobs; a swaying depth variant costs a shader permutation for an imperceptible effect |
+| 13 | Wind on leaf shadow (customDepthMaterial) and on the GTAO g-buffer | Skipped | Leaf shadows are soft blobs and AO is low-frequency; at the tuned ≤16 cm sway the static-shadow mismatch is imperceptible, while swaying depth/normal variants cost extra shader permutations and a re-rendered g-buffer hook |
 | 14 | Old `window.__*` scene globals | Replaced by module consts + one documented `window.__kommilo3d` handle | Same-module communication needs no globals; a single tuning handle is the owner's requested tuning table |
 | 15 | CDN photo-texture swap (grass/wood) kept? | Kept, now syncs normal-map repeats | Production users can reach jsdelivr; canvas fallback covers failure |
 | 16 | 60 fps on mid-range laptops — verification limit | **Gap, recorded:** this sandbox only has SwiftShader software GL (~1 fps), so real-GPU fps could not be measured in-session | Mitigated with measured draw-call accounting (high ≈5.4k calls, low ≈2.7k), adaptive tiers, frozen matrices, zero per-frame allocations |

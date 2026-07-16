@@ -523,17 +523,25 @@ function foliageShader(mat,{wind=0,weight='unit',translucency=false}={}){
     if(wind>0){
       sh.uniforms.uWind=windUniform
       const w = weight==='tip' ? 'max(position.y,0.0)' : '1.0'
+      /* Auslenkung passiert VOR instanceMatrix/modelMatrix — ohne inverse Skalierung würde
+         die konfigurierte Meter-Amplitude mit der Instanz-/Gruppenskalierung multipliziert
+         (Riesenbäume ×3, Grashalme ×0.15). Phase aus der echten Weltposition. */
       sh.vertexShader=sh.vertexShader
         .replace('#include <common>','#include <common>\nuniform float uWind;')
         .replace('#include <begin_vertex>',`#include <begin_vertex>
 #ifdef USE_INSTANCING
-\tfloat windPh = instanceMatrix[3][0]*.7 + instanceMatrix[3][2]*.9;
+\tvec2 windWp = modelMatrix[3].xz + instanceMatrix[3].xz;
+\tfloat windIx = 1.0/(length(modelMatrix[0].xyz)*length(instanceMatrix[0].xyz));
+\tfloat windIz = 1.0/(length(modelMatrix[2].xyz)*length(instanceMatrix[2].xyz));
 #else
-\tfloat windPh = 0.0;
+\tvec2 windWp = modelMatrix[3].xz;
+\tfloat windIx = 1.0/length(modelMatrix[0].xyz);
+\tfloat windIz = 1.0/length(modelMatrix[2].xyz);
 #endif
+\tfloat windPh = windWp.x*.7 + windWp.y*.9;
 \tfloat windW = ${w};
-\ttransformed.x += (sin(uWind+windPh)*.62 + sin(uWind*1.73+windPh*1.31)*.38) * ${wind.toFixed(3)} * windW;
-\ttransformed.z += cos(uWind*.79+windPh) * ${(wind*.6).toFixed(3)} * windW;`)
+\ttransformed.x += (sin(uWind+windPh)*.62 + sin(uWind*1.73+windPh*1.31)*.38) * ${wind.toFixed(3)} * windW * windIx;
+\ttransformed.z += cos(uWind*.79+windPh) * ${(wind*.6).toFixed(3)} * windW * windIz;`)
     }
     if(translucency){ const b=sceneConfig.materials.leafBackfaceBoost
       sh.fragmentShader=sh.fragmentShader.replace('#include <color_fragment>',
@@ -811,8 +819,10 @@ instanced(new THREE.CylinderGeometry(.05,.055,.84,10),new THREE.MeshStandardMate
   bench(8,17.6,0); bench(-8,17.6,0); bench(-2,-17.6,Math.PI); bench(21.3,6,Math.PI/2) }
 /* Pockelsstraße: Asphalt (Noise-Albedo + Relief + Roughness-Variation → leicht feuchter Look wie im Juli-Foto) */
 const asphaltT=noiseTex('#7e7f85',['#6f7076','#8b8c92','#75767c'],4200); asphaltT.repeat.set(3,24)
+/* Roughness ist ein Datenkanal: eigene Textur ohne sRGB-Dekodierung, sonst wird der Wert ~halbiert (glänzend) */
+const asphaltR=asphaltT.clone(); asphaltR.colorSpace=THREE.NoColorSpace; asphaltR.needsUpdate=true
 const asphaltMat=new THREE.MeshStandardMaterial({color:'#eceded',map:asphaltT,roughness:sceneConfig.materials.asphaltRoughness,
-  normalMap:normalFromTex(asphaltT,NS.asphalt),roughnessMap:asphaltT})
+  normalMap:normalFromTex(asphaltT,NS.asphalt),roughnessMap:asphaltR})
 const street=new THREE.Mesh(new THREE.PlaneGeometry(6.4,76),asphaltMat)
 street.rotation.x=-Math.PI/2; street.position.set(27,.012,0); street.receiveShadow=true; buildingGroup.add(street)
 B(.28,.13,76,new THREE.MeshStandardMaterial({color:'#c9c6bd',roughness:.9}),23.72,.065,0,0,false,true)
