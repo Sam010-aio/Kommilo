@@ -155,7 +155,29 @@ strengths, leaf translucency).
 | Stable 60 fps desktop | **Partially verifiable** — see decision log #16; tiers + measured call counts + no per-frame allocs; real-GPU validation needs the owner's hardware |
 | App functionality 100 % untouched | Met — 14-step interaction regression passes; only rendering code changed |
 
-## 6. Files touched
+## 6. Content-upgrade round (owner feedback on close-ups)
 
-- `index.html` — module script (rendering pipeline) + nothing else in the file
+- **People v2**: rebuilt seated/standing figures — connected joints, real shoulder/hip
+  widths, rounded shoes with soles, neck/collar transition, 6 skin tones, hair styles
+  (crop, bob, bun, fringe) with **two blonde tones (~1/3 of seeds)**, glasses,
+  student backpacks, separate shirt/pants palettes (no more "naked mannequin" look).
+- **Stairs bug fixed**: all three flight builders had tread rotation inverted — the
+  1.15 m tread edge ran *along* the flight, so steps floated as narrow planks between
+  the stringers. Treads now lie across the flight and rest on the stringers.
+- **Trees**: plane-tree bark (mottle + deep fissures + ridge highlights, corrected
+  v-repeat), root flare at the trunk base, 10-segment branches.
+- **Hedge**: leafy noise albedo + relief + near-white per-segment color jitter +
+  instanced leaf fringe on top/faces — no more flat green boxes.
+- **Facade grasses**: new arched, tapering blade texture, crossed cards per tuft,
+  translucent backfaces (also applied to lawn blades — no more black backlit chips).
+- **Leaf litter/falling leaves**: real leaf silhouette with veins + stem (alpha card)
+  instead of bare rectangles.
+- **AO ghost fix (pipeline)**: GTAO renders its g-buffer with an override material
+  that cannot alpha-test, so foliage cards produced square AO ghosts; foliage is now
+  hidden during the two AO g-buffer renders (also removes 42k grass instances from
+  those passes — a measurable win).
+
+## 7. Files touched
+
+- `index.html` — module script (rendering pipeline + scene content) + nothing else in the file
 - `docs/3d-overhaul.md` — this document
