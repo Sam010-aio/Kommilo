@@ -518,6 +518,8 @@ const windUniform={ value:0 }
    als solide Quadrate verrechnet und "AO-Geisterquadrate" werfen. Diese Objekte werden
    während des AO-G-Buffers ausgeblendet (spart zugleich 42k Instanzen in zwei Re-Renders). */
 const AO_EXCLUDE=[]
+/* Subtile Idle-Bewegung aller Figuren (Gewichtsverlagerung + Kopfdrift) — Registry für updateLife */
+const PEOPLE_SWAY=[]
 /* Foliage-Shader-Hook (onBeforeCompile ist Single-Slot, daher kombiniert):
    - wind: Vertex-Sway, Phase aus der Instanz-Weltposition — nichts bewegt sich synchron.
      weight 'tip' = Halmspitzen biegen (y 0→1), 'unit' = ganzes Blattbüschel schwingt.
@@ -754,26 +756,21 @@ function humanKit(seed){ const s=Math.abs(seed|0)
     mS:mat(SHIRT[(s*5+2)%8]), mP:mat(PANTS[(s*7+4)%6]),
     mK:new THREE.MeshStandardMaterial({color:SKIN[s%6],roughness:.65}),
     mH:mat(HAIR[(s*3+1)%6],.85), mShoe:mat('#2d2d30',.6) } }
-/* Kopf mit Gesicht + Frisur, an Eltern-Gruppe bei (0,0,0) montiert; Blick +z */
+/* Kopf: bewusst abstrakt — KEINE Gesichtszüge (Standard: ein Stilisierungslevel, ruhig).
+   Nur Schädel + dezente Haarkappe als Farbblock; Blick +z ergibt sich aus der Frisur. */
 function head(gh,K){ const s=K.s
   const mk=(geo,m,px,py,pz,rx=0,sc)=>{ const o=new THREE.Mesh(geo,m); o.position.set(px,py,pz); o.rotation.x=rx
     if(sc)o.scale.set(sc[0],sc[1],sc[2]); o.castShadow=true; gh.add(o); return o }
-  mk(new THREE.SphereGeometry(.094,24,20),K.mK,0,0,0,0,[.92,1.06,.97])
-  ;[-.086,.086].forEach(ex=>mk(new THREE.SphereGeometry(.015,10,8),K.mK,ex,-.008,.008,0,[.55,1,1]))
-  ;[-.031,.031].forEach(ex=>mk(new THREE.SphereGeometry(.0075,8,6),new THREE.MeshStandardMaterial({color:'#2a2622',roughness:.35}),ex,.012,.089))
-  mk(new THREE.SphereGeometry(.013,8,6),K.mK,0,-.012,.096,0,[.8,1.15,.9])
+  mk(new THREE.SphereGeometry(.089,24,20),K.mK,0,0,0,0,[.92,1.06,.97])
   const style=s%4
-  if(style===0){ mk(new THREE.SphereGeometry(.099,20,16,0,Math.PI*2,0,Math.PI*.55),K.mH,0,.008,-.012,-.16)
-    mk(new THREE.SphereGeometry(.07,14,10),K.mH,0,-.02,-.07,0,[1.05,.9,.7]) }
-  else if(style===1){ mk(new THREE.SphereGeometry(.102,20,16,0,Math.PI*2,0,Math.PI*.68),K.mH,0,.006,-.008,-.1)
-    mk(new THREE.SphereGeometry(.085,14,12),K.mH,0,-.055,-.045,0,[1.06,1.35,.85]) } // Bob bis zum Nacken
-  else if(style===2){ mk(new THREE.SphereGeometry(.099,20,16,0,Math.PI*2,0,Math.PI*.52),K.mH,0,.01,-.012,-.2)
-    mk(new THREE.SphereGeometry(.042,12,10),K.mH,0,.082,-.055) } // Dutt
-  else { mk(new THREE.SphereGeometry(.1,20,16,0,Math.PI*2,0,Math.PI*.6),K.mH,0,.004,-.02,-.28)
-    mk(new THREE.SphereGeometry(.05,12,10),K.mH,0,.05,.062,0,[1.25,.55,.9]) } // Pony vorn
-  if(s%4===1){ const gm=new THREE.MeshStandardMaterial({color:'#2a2c30',roughness:.4,metalness:.5})
-    ;[-.042,.042].forEach(gx=>{ const l=new THREE.Mesh(new THREE.TorusGeometry(.026,.004,6,16),gm); l.position.set(gx,.012,.086); gh.add(l) })
-    const br=new THREE.Mesh(new THREE.CylinderGeometry(.003,.003,.03,6),gm); br.rotation.z=Math.PI/2; br.position.set(0,.012,.086); gh.add(br) } }
+  if(style===0){ mk(new THREE.SphereGeometry(.094,20,16,0,Math.PI*2,0,Math.PI*.55),K.mH,0,.008,-.012,-.16)
+    mk(new THREE.SphereGeometry(.066,14,10),K.mH,0,-.02,-.066,0,[1.05,.9,.7]) }
+  else if(style===1){ mk(new THREE.SphereGeometry(.097,20,16,0,Math.PI*2,0,Math.PI*.68),K.mH,0,.006,-.008,-.1)
+    mk(new THREE.SphereGeometry(.08,14,12),K.mH,0,-.052,-.043,0,[1.06,1.35,.85]) } // Bob bis zum Nacken
+  else if(style===2){ mk(new THREE.SphereGeometry(.094,20,16,0,Math.PI*2,0,Math.PI*.52),K.mH,0,.01,-.012,-.2)
+    mk(new THREE.SphereGeometry(.04,12,10),K.mH,0,.078,-.052) } // Dutt
+  else { mk(new THREE.SphereGeometry(.095,20,16,0,Math.PI*2,0,Math.PI*.6),K.mH,0,.004,-.019,-.28)
+    mk(new THREE.SphereGeometry(.047,12,10),K.mH,0,.048,.059,0,[1.25,.55,.9]) } } // Pony vorn
 /* Sitzende Person (Tische): Gesäß auf Sitzhöhe .455, Blick +z zum Tisch, Hände auf der Platte */
 function person(g,x,z,ry,seed){ const K=humanKit(seed), s=K.s
   const grp=new THREE.Group(); grp.position.set(x,0,z); grp.rotation.y=ry
@@ -796,29 +793,34 @@ function person(g,x,z,ry,seed){ const K=humanKit(seed), s=K.s
   col.position.set(0,1.03,.01); col.castShadow=true; grp.add(col)                          // Kragen
   const gh=new THREE.Group(); gh.position.set(0,1.17,.015); gh.rotation.y=((s%5)-2)*.16; grp.add(gh)
   head(gh,K)
+  const sway={grp,gh,ph:s*1.3,base:0,hy:gh.rotation.y,amp:.004,dead:false}
+  grp.userData.sway=sway; PEOPLE_SWAY.push(sway)
   g.add(grp) }
-/* Stehende Person (Park, Wege) — 1,72 m, leichte Standasymmetrie, teils mit Rucksack */
+/* Stehende Person (Park, Wege) — 1,72 m, ~7,5 Kopfhöhen, Gewichtsverlagerung, teils mit Rucksack */
 function standPerson(gp,x,z,ry,seed){ const K=humanKit(seed), s=K.s
   const grp=new THREE.Group(); grp.position.set(x,0,z); grp.rotation.y=ry; grp.scale.setScalar(.95+((s*7)%9)/90)
+  const sway={grp,gh:null,ph:s*2.1,base:(s%2?1:-1)*.012,hy:0,amp:.008,dead:false}
+  grp.rotation.z=sway.base // leichte Standasymmetrie — nie perfekt symmetrisch
   const mk=(geo,m,px,py,pz,rx=0,rz=0,sc)=>{ const o=new THREE.Mesh(geo,m); o.position.set(px,py,pz); o.rotation.x=rx; o.rotation.z=rz; if(sc)o.scale.set(sc[0],sc[1],sc[2]); o.castShadow=true; grp.add(o); return o }
   ;[-.09,.09].forEach(lx=>{
     mk(new THREE.CapsuleGeometry(.048,.14,6,10),K.mShoe,lx,.052,.04,Math.PI/2)             // Schuh
     mk(new THREE.BoxGeometry(.09,.022,.2),new THREE.MeshStandardMaterial({color:'#e8e6e0',roughness:.8}),lx,.012,.048)
     mk(new THREE.CapsuleGeometry(.05,.3,6,12),K.mP,lx,.29,.01,0,lx<0?.02:-.02)             // Wade
     mk(new THREE.CapsuleGeometry(.063,.3,6,12),K.mP,lx*.95,.62,0,0,lx<0?.03:-.03) })       // Oberschenkel
-  mk(new THREE.SphereGeometry(.11,16,12),K.mP,0,.9,0,0,0,[1.14,.75,.95])                   // Hüfte
-  mk(new THREE.CapsuleGeometry(.112,.36,10,18),K.mS,0,1.24,0,0,0,[1.16,1,.78])             // Rumpf/Jacke
-  ;[-.148,.148].forEach(sx2=>mk(new THREE.SphereGeometry(.058,12,10),K.mS,sx2,1.415,0))    // Schultern
-  ;[-1,1].forEach(sd=>{
-    mk(new THREE.CapsuleGeometry(.04,.24,6,10),K.mS,sd*.195,1.3,.005,.05,sd*-.06)          // Oberarm
-    mk(new THREE.CapsuleGeometry(.034,.22,6,10),K.mS,sd*.21,1.04,.03,.14,sd*-.02)          // Unterarm
-    mk(new THREE.SphereGeometry(.04,10,8),K.mK,sd*.218,.895,.06,0,0,[.82,1.1,.95]) })      // Hand
+  mk(new THREE.SphereGeometry(.105,16,12),K.mP,.012,.9,0,0,0,[1.1,.75,.95])                // Hüfte, minimal versetzt
+  mk(new THREE.CapsuleGeometry(.112,.36,10,18),K.mS,0,1.24,0,0,.01,[1.16,1,.78])           // Rumpf/Jacke
+  ;[-.148,.148].forEach(sx2=>mk(new THREE.SphereGeometry(.058,12,10),K.mS,sx2,1.415,0))    // Schultern breiter als Hüfte
+  ;[-1,1].forEach(sd=>{ const bend=sd*(s%2?1:-1)>0?.2:.09                                  // ein Arm stärker gebeugt
+    mk(new THREE.CapsuleGeometry(.04,.24,6,10),K.mS,sd*.195,1.29,.005,bend*.4,sd*-.06)     // Oberarm
+    mk(new THREE.CapsuleGeometry(.034,.2,6,10),K.mS,sd*.208,1.02,.02+bend*.09,bend,sd*-.02)// Unterarm
+    mk(new THREE.SphereGeometry(.038,10,8),K.mK,sd*.215,.84,.05+bend*.15,0,0,[.82,1.1,.95]) }) // Hand endet auf Mitte Oberschenkel
   mk(new THREE.CylinderGeometry(.04,.049,.1,12),K.mK,0,1.5,0)                              // Hals
   const col=new THREE.Mesh(new THREE.TorusGeometry(.054,.013,8,20),K.mS); col.rotation.x=Math.PI/2
   col.position.set(0,1.47,0); col.castShadow=true; grp.add(col)
   const gh=new THREE.Group(); gh.position.set(0,1.615,.01); gh.rotation.y=((s%5)-2)*.12; grp.add(gh)
   head(gh,K)
-  if(s%3===0){ const bp=new THREE.MeshStandardMaterial({color:['#7a3b3b','#3e5c48','#4a4f8c'][s%3===0?(s>>2)%3:0],roughness:.85})
+  sway.gh=gh; sway.hy=gh.rotation.y; grp.userData.sway=sway; PEOPLE_SWAY.push(sway)
+  if(s%3===0){ const bp=new THREE.MeshStandardMaterial({color:['#7a3b3b','#3e5c48','#4a4f8c'][(s>>2)%3],roughness:.85})
     mk(new THREE.BoxGeometry(.26,.34,.12),bp,0,1.22,-.17)                                  // Rucksack
     ;[-.09,.09].forEach(sx2=>mk(new THREE.BoxGeometry(.04,.3,.02),bp,sx2,1.3,-.1)) }
   gp.add(grp) }
@@ -857,19 +859,10 @@ function streetLamp(x,z){ const g=new THREE.Group(); g.position.set(x,0,z)
   const pt=new THREE.PointLight(0xffe2ae,0,17,2); pt.position.set(.88,4.05,0); g.add(pt); stLights.push(pt)
   buildingGroup.add(g) }
 streetLamp(23.4,-26); streetLamp(23.4,-13); streetLamp(23.4,0); streetLamp(23.4,13); streetLamp(23.4,26)
-/* Hecke zum Flussufer (Foto: dichte Hecke vor dem Haus) — belaubte Oberfläche statt grüner Kisten:
-   Noise-Albedo + Relief, Farbjitter pro Segment, leichte Verdrehung; Laubkranz folgt nach LEAF_TEX */
-const HEDGE_ITEMS=[]
-{ const hedgeT=noiseTex('#57694a',['#48593c','#647758','#5a6c4c','#6e8160'],7000)
-  const hm=foliageShader(new THREE.MeshStandardMaterial({map:hedgeT,roughness:1,normalMap:normalFromTex(hedgeT,NS.hedge)}),
-    { wind:sceneConfig.wind.hedgeStrength, weight:'tip' })
-  for(let x=-17;x<=-4;x+=1.05) HEDGE_ITEMS.push({x:x+(Math.random()-.5)*.15,y:.5,z:22.6+(Math.random()-.5)*.2,ry:(Math.random()-.5)*.14,sx:1.18,sy:.9+Math.random()*.25,sz:1.02})
-  for(let x=5;x<=13;x+=1.05) HEDGE_ITEMS.push({x:x+(Math.random()-.5)*.15,y:.5,z:22.6+(Math.random()-.5)*.2,ry:(Math.random()-.5)*.14,sx:1.18,sy:.9+Math.random()*.25,sz:1.02})
-  const hi=instanced(new THREE.BoxGeometry(1,1,1),hm,HEDGE_ITEMS)
-  const hcl=new THREE.Color()
-  /* Jitter nahe Weiß: multipliziert die Textur nur leicht, statt sie ins Schwarze zu drücken */
-  HEDGE_ITEMS.forEach((h,i)=>{ hcl.setHSL(.24+Math.random()*.05,.18+Math.random()*.12,.62+Math.random()*.14); hi.setColorAt(i,hcl) })
-  if(hi.instanceColor) hi.instanceColor.needsUpdate=true }
+/* Hecken: über hedgeRun() (Definition nach LEAF_TEX) — Segmente werden global gesammelt
+   und einmal instanziert. Flussufer-Reihen wie im Foto: */
+const HEDGE_RUNS=[]
+HEDGE_RUNS.push([-10.5,22.6,13.5,0,1.0],[9,22.6,8.5,0,1.0])
 const p2=new THREE.Mesh(new THREE.PlaneGeometry(3.6,58),M.gravel); p2.rotation.x=-Math.PI/2; p2.rotation.z=-1.2; p2.position.set(-26,.008,-12); p2.receiveShadow=true; buildingGroup.add(p2)
 /* Realistische Bäume: Astskelett mit Rindentextur + dichtes kleines Laub */
 /* Rinde v2: Platanen-Look — graubraunes Mottle, tiefe Furchen mit hellem Grat, Querrisse */
@@ -912,17 +905,53 @@ const LEAF_DEPTH=new THREE.MeshDepthMaterial({ depthPacking:THREE.RGBADepthPacki
 const BARK_TEX=barkTexture()
 const BARK=new THREE.MeshStandardMaterial({ map:BARK_TEX, roughness:1, normalMap:normalFromTex(BARK_TEX,NS.bark), envMapIntensity:sceneConfig.materials.envMapIntensity.bark })
 const quadGeo=new THREE.PlaneGeometry(1,1)
-/* Laubkranz auf Deckel und Flanken der Hecke — bricht die harten Boxkanten */
-{ const fm=foliageShader(new THREE.MeshStandardMaterial({ map:LEAF_TEX, alphaTest:.4, side:THREE.DoubleSide, roughness:1,
+/* ===== Hecken-Kit (CLAUDE.md-Standard): nie nackte Boxen =====
+   4 vertex-verrauschte Box-Varianten (wellige Silhouette, eingezogene = gerundete Deckelkante,
+   Fake-AO zur Basis über Vertexfarben) + dichte instanzierte Blattdecke + Ausreißer-Cluster. */
+const hedgeKit=(()=>{
+  const tex=noiseTex('#57694a',['#48593c','#647758','#5a6c4c','#6e8160'],7000)
+  const mat=foliageShader(new THREE.MeshStandardMaterial({map:tex,roughness:1,vertexColors:true,normalMap:normalFromTex(tex,NS.hedge)}),
+    { wind:sceneConfig.wind.hedgeStrength, weight:'tip' })
+  const geos=[]
+  for(let v=0;v<4;v++){ const g=new THREE.BoxGeometry(1,1,1,4,3,4)
+    const p=g.attributes.position, col=[]
+    for(let i=0;i<p.count;i++){ const x=p.getX(i),y=p.getY(i),z=p.getZ(i)
+      const n=Math.sin(x*7.3+v*11)*Math.cos(z*6.1+v*5)*.5+Math.sin(y*9.7+x*3.1+v)*.5
+      let nx=x+Math.sign(x)*n*.04, ny=y+n*.055, nz=z+Math.sign(z)*n*.04
+      if(y>.4){ nx*=.92; nz*=.92 } // Deckelkante einziehen → gerundete Oberkante
+      p.setXYZ(i,nx,ny,nz)
+      const ao=.5+.5*Math.min(1,(y+.5)*1.3) // Fake-AO: dunkler zu Basis und Innerem
+      col.push(ao,ao,ao) }
+    g.computeVertexNormals()
+    g.setAttribute('color',new THREE.Float32BufferAttribute(col,3))
+    geos.push(g) }
+  const leafMat=foliageShader(new THREE.MeshStandardMaterial({ map:LEAF_TEX, alphaTest:.4, side:THREE.DoubleSide, roughness:1,
     color:new THREE.Color('#9db487'), envMapIntensity:sceneConfig.materials.envMapIntensity.leaf }),
     { wind:sceneConfig.wind.hedgeStrength*3, translucency:true })
-  const fr=[]
-  HEDGE_ITEMS.forEach(h=>{ for(let k=0;k<10;k++){ const top=k<4
-    fr.push({ x:h.x+(Math.random()-.5)*.95, y:h.y+(top?h.sy/2+.02:(Math.random()-.3)*h.sy*.4),
-      z:h.z+(top?(Math.random()-.5)*.8:(k%2?-.56:.56)),
-      ry:Math.random()*Math.PI, sx:.35+Math.random()*.3, sy:.3+Math.random()*.22 }) } })
-  const fi=instanced(quadGeo,fm,fr)
-  fi.customDepthMaterial=LEAF_DEPTH; AO_EXCLUDE.push(fi) }
+  return { geos, mat, leafMat, segs:[[],[],[],[]], leaves:[] } })()
+/* Heckenreihe der Länge len ab Mittelpunkt (cx,cz), Richtung ry, Höhe h — sammelt Segmente + Blattdecke */
+function hedgeRun(cx,cz,len,ry,h=1,w=1.15){
+  const dx=Math.cos(ry), dz=-Math.sin(ry), px=Math.sin(ry), pz=Math.cos(ry) // Laufrichtung + Senkrechte
+  const n=Math.max(1,Math.round(len/1.02))
+  for(let i=0;i<n;i++){ const t=(i+.5)/n-.5
+    const sx=cx+dx*t*len+(Math.random()-.5)*.1, sz=cz+dz*t*len+(Math.random()-.5)*.1
+    const sy=h*(.92+Math.random()*.18)
+    hedgeKit.segs[i%4].push({x:sx,y:sy/2-.03,z:sz,ry:ry+(Math.random()-.5)*.12,sx:1.06,sy,sz:w}) // 3 cm versenkt
+    for(let k=0;k<14;k++){ const top=k<6, side=(k%2?-1:1)*w*.52, al=(Math.random()-.5)*.9
+      hedgeKit.leaves.push({
+        x:sx+dx*al+(top?px*(Math.random()-.5)*w*.7:px*side),
+        y:top?sy-.05+Math.random()*.16:(.2+Math.random()*.6)*sy,
+        z:sz+dz*al+(top?pz*(Math.random()-.5)*w*.7:pz*side),
+        ry:Math.random()*Math.PI, sx:.32+Math.random()*.3, sy:.28+Math.random()*.24 }) } } }
+/* Nach Platzierung aller Reihen einmal instanzieren (4 Varianten + 1 Blattdecke) */
+function buildHedges(){
+  const cl=new THREE.Color()
+  hedgeKit.segs.forEach((items,v)=>{ if(!items.length) return
+    const im=instanced(hedgeKit.geos[v],hedgeKit.mat,items)
+    items.forEach((it,i)=>{ cl.setHSL(.24+Math.random()*.05,.18+Math.random()*.12,.62+Math.random()*.12); im.setColorAt(i,cl) })
+    if(im.instanceColor) im.instanceColor.needsUpdate=true })
+  if(hedgeKit.leaves.length){ const fi=instanced(quadGeo,hedgeKit.leafMat,hedgeKit.leaves)
+    fi.customDepthMaterial=LEAF_DEPTH; AO_EXCLUDE.push(fi) } }
 const branchGeo=new THREE.CylinderGeometry(.62,1,1,10); branchGeo.translate(0,.5,0)
 function tree(x,z,s,seed){
   let r=seed*999+7; const rnd=()=>{ r=(r*16807)%2147483647; return (r-1)/2147483646 }
@@ -993,21 +1022,51 @@ function tree(x,z,s,seed){
   im.receiveShadow=true; im.frustumCulled=false; buildingGroup.add(im); AO_EXCLUDE.push(im) }
 
 /* Echter Rasen: 24.000 instanzierte Halm-Bueschel mit Farbvariation */
-/* Ziergras-Büschel: gebogene, sich verjüngende Halme mit hellen Spitzen — statt starrer Stäbe */
-function tuftTexture(){ const s=128,c=cvs(s),x=c.getContext('2d'); x.clearRect(0,0,s,s)
-  const cols=['#55683f','#617647','#6e8351','#78904f','#4c5e39']
-  x.lineCap='round'
-  for(let i=0;i<26;i++){ const bx=64+(Math.random()-.5)*44, bend=(Math.random()-.5)*74, tipY=6+Math.random()*24
-    const g2=x.createLinearGradient(0,s,0,tipY)
-    g2.addColorStop(0,'#3d4a2f'); g2.addColorStop(.7,cols[(Math.random()*5)|0]); g2.addColorStop(1,'#9aad72')
-    x.strokeStyle=g2
-    let px=bx, py=s, pw=3.4+Math.random()*2.2
-    for(let seg=0;seg<3;seg++){ const t2=(seg+1)/3
-      const nx=bx+bend*t2*t2, ny=s-(s-tipY)*t2
-      x.lineWidth=Math.max(.8,pw*(1-t2*.72))
-      x.beginPath(); x.moveTo(px,py); x.quadraticCurveTo(bx+bend*((t2-1/6)**2)*.9,(py+ny)/2,nx,ny); x.stroke()
-      px=nx; py=ny } }
-  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t }
+/* ===== Gras-Cluster-Kit (CLAUDE.md-Standard): 6–10 einzeln gebogene Halme + Pflanzbasis =====
+   Halm = echte Geometrie (Taper + Bogen + Vertexfarbverlauf), kein Alpha-Karten-Kreuz.
+   Normalen nach oben geblendet — Halme kippen nie ins Schwarze; Wind pro Halm über Instanzphase. */
+const grassKit=(()=>{
+  const blade=new THREE.PlaneGeometry(1,1,1,4); blade.translate(0,.5,0)
+  const p=blade.attributes.position, col=[]
+  for(let i=0;i<p.count;i++){ const y=p.getY(i)
+    p.setX(i,p.getX(i)*(1-y*.82))   // Verjüngung zur Spitze
+    p.setZ(i,y*y*.4)                 // Bogen nach vorn
+    const l=.5+.55*y; col.push(.42*l,.6*l,.3*l) } // dunkle Basis → helle Spitze
+  blade.setAttribute('color',new THREE.Float32BufferAttribute(col,3))
+  blade.computeVertexNormals()
+  const nrm=blade.attributes.normal
+  for(let i=0;i<nrm.count;i++){ const nx=nrm.getX(i)*.35, ny=nrm.getY(i)*.35+.94, nz=nrm.getZ(i)*.35
+    const il=1/Math.hypot(nx,ny,nz); nrm.setXYZ(i,nx*il,ny*il,nz*il) }
+  const mat=foliageShader(new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:1}),
+    { wind:sceneConfig.wind.grassStrength*1.5, weight:'tip', translucency:true })
+  return { blade, mat, items:[], bases:[] } })()
+/* Ein verwurzelter Cluster: auf Belag mit Pflanzring, auf Rasen mit Erdscheibe */
+function grassCluster(cx,cz,s=1,paved=false){
+  const n=6+((Math.abs(cx*13+cz*7)|0)%5)
+  for(let i=0;i<n;i++){ const a=i/n*Math.PI*2+Math.random()*.9
+    grassKit.items.push({ x:cx+Math.cos(a)*.05*s, z:cz+Math.sin(a)*.05*s,
+      yaw:a+(Math.random()-.5)*.6, lean:.1+Math.random()*.22,
+      h:(.34+Math.random()*.3)*s, w:(.055+Math.random()*.035)*s,
+      hue:.24+Math.random()*.07, lit:.42+Math.random()*.2 }) }
+  grassKit.bases.push({x:cx,z:cz,s,paved}) }
+function buildGrassClusters(){
+  const its=grassKit.items
+  const im=new THREE.InstancedMesh(grassKit.blade,grassKit.mat,its.length)
+  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), e=new THREE.Euler(0,0,0,'YXZ'), sv=new THREE.Vector3(), pv=new THREE.Vector3(), cl=new THREE.Color()
+  its.forEach((it,i)=>{ e.set(it.lean,it.yaw,0); q.setFromEuler(e); sv.set(it.w,it.h,1); pv.set(it.x,0,it.z)
+    m4.compose(pv,q,sv); im.setMatrixAt(i,m4)
+    cl.setHSL(it.hue,.34,it.lit); im.setColorAt(i,cl) })
+  if(im.instanceColor) im.instanceColor.needsUpdate=true
+  im.castShadow=false; im.frustumCulled=false; buildingGroup.add(im)
+  const paved=grassKit.bases.filter(b=>b.paved), all=grassKit.bases
+  /* Pflanzring (Belag) — Pflanze schneidet nie sichtbar den Belag */
+  if(paved.length) instanced(new THREE.CylinderGeometry(.24,.26,.1,12),
+    new THREE.MeshStandardMaterial({color:'#b6b2a9',roughness:.9}),
+    paved.map(b=>({x:b.x,y:.05,z:b.z,sx:b.s,sz:b.s})),false)
+  /* Erdscheibe unter jedem Cluster */
+  instanced(new THREE.CylinderGeometry(.18,.2,.05,10),
+    new THREE.MeshStandardMaterial({color:'#4a3d2f',roughness:1}),
+    all.map(b=>({x:b.x,y:b.paved?.085:.028,z:b.z,sx:b.s,sz:b.s})),false) }
 function bladeTexture(){ const s=128,c=cvs(s),x=c.getContext('2d'); x.clearRect(0,0,s,s)
   for(let i=0;i<9;i++){ const bx2=14+Math.random()*100, tip=bx2+(Math.random()-.5)*26
     const g=x.createLinearGradient(0,s,0,10); g.addColorStop(0,'#5d7348'); g.addColorStop(1,'#a3b886')
@@ -1038,23 +1097,10 @@ function bladeTexture(){ const s=128,c=cvs(s),x=c.getContext('2d'); x.clearRect(
   }
   gi.count=placed; gi.instanceMatrix.needsUpdate=true; if(gi.instanceColor) gi.instanceColor.needsUpdate=true
   buildingGroup.add(gi); AO_EXCLUDE.push(gi)
-  /* Hoher Gräsersaum entlang beider Langfassaden — je Büschel zwei gekreuzte Karten für Volumen */
-  const tm=foliageShader(new THREE.MeshStandardMaterial({ map:tuftTexture(), alphaTest:.3, side:THREE.DoubleSide, roughness:1,
-    envMapIntensity:sceneConfig.materials.envMapIntensity.leaf }), { wind:sceneConfig.wind.grassStrength*1.5, weight:'tip', translucency:true })
-  const tuftN=560, ti=new THREE.InstancedMesh(gq,tm,tuftN)
-  let tk=0
-  for(let side=-1;side<=1;side+=2){ for(let x=-15;x<=15&&tk<tuftN-2;x+=.38){
+  /* Gräsersaum entlang beider Langfassaden: verwurzelte Cluster mit Pflanzringen im Belag */
+  for(let side=-1;side<=1;side+=2){ for(let x=-15;x<=15;x+=.95){
     if(side>0&&x>-2&&x<2) continue
-    const z=side*(HZ+.62)+(Math.random()-.5)*.5, xx=x+(Math.random()-.5)*.3
-    const hgt=.42+Math.random()*.36, wid=.55+Math.random()*.35, ry0=Math.random()*Math.PI
-    cl.setHSL(.24+Math.random()*.06,.3+Math.random()*.12,.32+Math.random()*.1)
-    for(let k2=0;k2<2;k2++){
-      e.set(0,ry0+k2*(Math.PI/2+(Math.random()-.5)*.5),(Math.random()-.5)*.22); q.setFromEuler(e)
-      sv.set(wid*(k2?.8:1),hgt*(k2?.92:1),1)
-      m4.compose(new THREE.Vector3(xx,0,z),q,sv)
-      ti.setMatrixAt(tk,m4); ti.setColorAt(tk,cl); tk++ } } }
-  ti.count=tk; ti.instanceMatrix.needsUpdate=true; if(ti.instanceColor)ti.instanceColor.needsUpdate=true
-  ti.frustumCulled=false; buildingGroup.add(ti); AO_EXCLUDE.push(ti)
+    grassCluster(x+(Math.random()-.5)*.25, side*(HZ+.62)+(Math.random()-.5)*.3, .85+Math.random()*.45, true) } }
   const fm=new THREE.InstancedMesh(new THREE.SphereGeometry(.02,6,5),new THREE.MeshStandardMaterial({color:'#f2ead2',roughness:.9}),120)
   let f=0,fg=0
   while(f<120&&fg<1500){ fg++
@@ -1436,6 +1482,9 @@ function updateLife(t){
       a[i*3+1]=motes.base[i*3+1]+Math.sin(ts*.11+p2)*motes.drift*.6
       a[i*3+2]=motes.base[i*3+2]+Math.cos(ts*.13+p2*2.3)*motes.drift }
     motes.attr.needsUpdate=true }
+  for(let i=0;i<PEOPLE_SWAY.length;i++){ const p2=PEOPLE_SWAY[i]; if(p2.dead) continue
+    p2.grp.rotation.z=p2.base+Math.sin(t*.35+p2.ph)*p2.amp        // Gewicht pendelt kaum sichtbar
+    p2.gh.rotation.y=p2.hy+Math.sin(t*.21+p2.ph*1.7)*.06 }        // Kopf driftet langsam
   { const c=fallLeaves.cfg
     for(let i=0;i<c.count;i++){ const k=((t+fallLeaves.off[i])%c.fallTime)/c.fallTime
       const ph2=fallLeaves.off[i]*2.4
@@ -2133,10 +2182,13 @@ function table(gp,id,x,z,y,r,color,members,capacity,isFree){
   gp.add(g) }
 /* GPU-Hygiene: Rebuilds entsorgen ihre Geometrien und Einzelmaterialien (geteilte M.*-Materialien bleiben) */
 const SHARED_MATS=new Set([...Object.values(M),CHAIR_BACK,CHAIR_LEG,BARK])
-function disposeGroup(root){ root.traverse(o=>{ if(o.geometry) o.geometry.dispose()
+function disposeGroup(root){ root.traverse(o=>{ if(o.userData.sway) o.userData.sway.dead=true
+  if(o.geometry) o.geometry.dispose()
   if(o.material) (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(!SHARED_MATS.has(m)) m.dispose() }) }) }
+function pruneSway(){ for(let i=PEOPLE_SWAY.length-1;i>=0;i--) if(PEOPLE_SWAY[i].dead) PEOPLE_SWAY.splice(i,1) }
 function rebuildTables(){ clickTargets.length=0
   while(tablesGroup.children.length){ const c=tablesGroup.children[0]; disposeGroup(c); tablesGroup.remove(c) }
+  pruneSway()
   const m=occMap()
   visibleSlots().forEach(sl=>{ const g=m.get(sl.id); const y=sl.l?F1:F0
     table(tablesGroup,sl.id,sl.x,sl.z,y,sl.r,g?g.color:'',g?g.members:0,g?g.capacity:0,!g) })
@@ -2388,6 +2440,7 @@ function freeTable(f){ const g=new THREE.Group(); g.position.set(f.x,F0,f.z); g.
   partnerGroup.add(g) }
 function rebuildPartners(){ partnerTargets.length=0
   while(partnerGroup.children.length){ const c=partnerGroup.children[0]; disposeGroup(c); partnerGroup.remove(c) }
+  pruneSway()
   const spots=[[-10,-8,0],[10,-8,Math.PI/2],[-11,6.5,0],[9,7,Math.PI/2],[0,9.5,0],[4,-9,0]]
   state.partners.forEach((p,i)=>{ const sp=spots[i%6]; partnerTable(p,sp[0],sp[1],sp[2],i) })
   FREE_SPOTS.forEach(f=>freeTable(f)) }
@@ -2748,9 +2801,14 @@ renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
     const d=document.createElement('span'); d.id='bellDot'
     d.style.cssText='position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:99px;background:#EF4444;display:none'
     bell.appendChild(d) } }
+/* Hecken & Gras-Cluster einmalig instanzieren — alle Reihen/Cluster sind ab hier platziert */
+HEDGE_RUNS.forEach(r=>hedgeRun(...r))
+buildHedges(); buildGrassClusters()
 /* Statische Kulisse: Weltmatrizen einmal berechnen und einfrieren — spart CPU-Zeit pro Frame.
    (Wind/Partikel animieren über Shader-Uniforms bzw. Instanz-/Positionsattribute, nicht über Matrizen.) */
 ;[buildingGroup,genericGroup].forEach(g=>{ g.updateMatrixWorld(true); g.traverse(o=>o.matrixAutoUpdate=false) })
+/* Figuren mit Idle-Bewegung wieder auftauen — Kinder unter eingefrorenen Eltern updaten sauber */
+PEOPLE_SWAY.forEach(p2=>{ p2.grp.matrixAutoUpdate=true; p2.gh.matrixAutoUpdate=true })
 rebuildTables(); rebuildPartners(); applyMode(); syncScene(); render()
 /* Nacht-IBL nach dem Boot vorwärmen: erspart den einmaligen PMREM-Ruckler beim ersten Moduswechsel */
 setTimeout(()=>{ try{ envFor('nacht') }catch(e){} },sceneConfig.renderer.envPrewarmMs)
