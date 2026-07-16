@@ -319,7 +319,8 @@ const sceneConfig = {
 }
 
 /* ===== Renderer: sRGB out, ACES filmic, weiche Schatten ===== */
-let qualityTier = 'high' // adaptive: der Performance-Monitor (unten) stuft bei Bedarf ab
+/* Mobile (grober Zeiger) startet eine Stufe tiefer — Ziel 30 fps; der Monitor stuft weiter ab */
+let qualityTier = (matchMedia('(pointer: coarse)').matches) ? 'medium' : 'high'
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' })
 renderer.outputColorSpace = THREE.SRGBColorSpace
 renderer.setPixelRatio(Math.min(devicePixelRatio, sceneConfig.quality[qualityTier].pixelRatio, sceneConfig.renderer.maxPixelRatio))
@@ -392,7 +393,8 @@ const tablesGroup=new THREE.Group(); scene.add(tablesGroup)
 const clickTargets=[]
 /* ===== Texturen ===== */
 function cvs(s){ const c=document.createElement('canvas'); c.width=c.height=s; return c }
-function tx(c){ const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=sceneConfig.renderer.anisotropy; t.colorSpace=THREE.SRGBColorSpace; return t }
+function tx(c){ const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping
+  t.anisotropy=Math.min(sceneConfig.renderer.anisotropy,renderer.capabilities.getMaxAnisotropy()); t.colorSpace=THREE.SRGBColorSpace; return t }
 /* Normal-Map aus einer Canvas-Textur (Sobel über Luminanz) — Mikrorelief ohne Netz-Assets */
 function normalFromTex(tex2,strength){ const src=tex2.image, s=src.width
   const sx=src.getContext('2d').getImageData(0,0,s,src.height), w=s, h=src.height
@@ -1351,6 +1353,35 @@ try {
   composer.setSize(vw, vh)
 } catch(e) { composer = null }
 
+/* ===== Adaptive Qualität: DPR, Schattenauflösung und AO folgen der realen Framerate ===== */
+function applyAoSize(){ if(!composer||!gtaoPass||!gtaoPass.enabled) return
+  const q=sceneConfig.quality[qualityTier]
+  /* Halbauflösung: AO ist niederfrequent — optisch kaum Verlust, halbe Füllrate */
+  if(q.aoHalfRes) gtaoPass.setSize(Math.ceil((innerWidth-264)/2),Math.ceil((innerHeight-64)/2)) }
+function setQualityTier(tier){ if(!sceneConfig.quality[tier]) return
+  qualityTier=tier
+  const q=sceneConfig.quality[tier]
+  renderer.setPixelRatio(Math.min(devicePixelRatio,q.pixelRatio,sceneConfig.renderer.maxPixelRatio))
+  renderer.setSize(innerWidth-264,innerHeight-64)
+  if(composer) composer.setSize(innerWidth-264,innerHeight-64)
+  if(sun.shadow.mapSize.x!==q.shadowMap){ sun.shadow.mapSize.set(q.shadowMap,q.shadowMap)
+    if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null } }
+  if(gtaoPass) gtaoPass.enabled=q.ao
+  applyAoSize() }
+setQualityTier(qualityTier)
+/* FPS-Monitor: schnell abstufen, träge heraufstufen; Ceiling verhindert Ping-Pong */
+const perfMon={ frames:0, tSum:0, good:0, sinceRaise:99, ceiling:2, order:['low','medium','high'] }
+function perfTick(dt){ const q=sceneConfig.quality
+  perfMon.frames++; perfMon.tSum+=dt; if(perfMon.tSum<q.windowSec) return
+  const fps=perfMon.frames/perfMon.tSum
+  perfMon.frames=0; perfMon.tSum=0; perfMon.sinceRaise++
+  const idx=perfMon.order.indexOf(qualityTier)
+  if(fps<q.fpsDrop&&idx>0){
+    if(perfMon.sinceRaise<=2) perfMon.ceiling=idx-1 // Raise hat sofort wieder geruckelt → Stufe für diese Session deckeln
+    perfMon.good=0; setQualityTier(perfMon.order[idx-1]) }
+  else if(fps>q.fpsRaise&&idx<perfMon.ceiling){ if(++perfMon.good>=3){ perfMon.good=0; perfMon.sinceRaise=0; setQualityTier(perfMon.order[idx+1]) } }
+  else perfMon.good=0 }
+
 
 /* ================= APP: Zustand, UI, Szenen-Manager ================= */
 const UNIS=[
@@ -1975,8 +2006,12 @@ function table(gp,id,x,z,y,r,color,members,capacity,isFree){
   cb.position.y=.9; cb.userData.slotId=id; clickTargets.push(cb); g.add(cb)
   g.userData={slotId:id,ring,pos:[x,y,z],free:!!isFree}
   gp.add(g) }
+/* GPU-Hygiene: Rebuilds entsorgen ihre Geometrien und Einzelmaterialien (geteilte M.*-Materialien bleiben) */
+const SHARED_MATS=new Set([...Object.values(M),CHAIR_BACK,CHAIR_LEG,BARK])
+function disposeGroup(root){ root.traverse(o=>{ if(o.geometry) o.geometry.dispose()
+  if(o.material) (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(!SHARED_MATS.has(m)) m.dispose() }) }) }
 function rebuildTables(){ clickTargets.length=0
-  while(tablesGroup.children.length) tablesGroup.remove(tablesGroup.children[0])
+  while(tablesGroup.children.length){ const c=tablesGroup.children[0]; disposeGroup(c); tablesGroup.remove(c) }
   const m=occMap()
   visibleSlots().forEach(sl=>{ const g=m.get(sl.id); const y=sl.l?F1:F0
     table(tablesGroup,sl.id,sl.x,sl.z,y,sl.r,g?g.color:'',g?g.members:0,g?g.capacity:0,!g) })
@@ -2227,7 +2262,7 @@ function freeTable(f){ const g=new THREE.Group(); g.position.set(f.x,F0,f.z); g.
   cb.position.y=.8; cb.userData.fid=f.id; partnerTargets.push(cb); g.add(cb)
   partnerGroup.add(g) }
 function rebuildPartners(){ partnerTargets.length=0
-  while(partnerGroup.children.length) partnerGroup.remove(partnerGroup.children[0])
+  while(partnerGroup.children.length){ const c=partnerGroup.children[0]; disposeGroup(c); partnerGroup.remove(c) }
   const spots=[[-10,-8,0],[10,-8,Math.PI/2],[-11,6.5,0],[9,7,Math.PI/2],[0,9.5,0],[4,-9,0]]
   state.partners.forEach((p,i)=>{ const sp=spots[i%6]; partnerTable(p,sp[0],sp[1],sp[2],i) })
   FREE_SPOTS.forEach(f=>freeTable(f)) }
@@ -2554,12 +2589,13 @@ function updateLabels(){
       : '<div class="tlabel free" style="left:'+x+'px;top:'+y+'px"><b>+ Gruppe gründen</b></div>' })
   labelLayer.innerHTML=html }
 addEventListener('resize',()=>{ camera.aspect=(innerWidth-264)/(innerHeight-64); camera.updateProjectionMatrix()
-  renderer.setSize(innerWidth-264,innerHeight-64); if(composer) composer.setSize(innerWidth-264,innerHeight-64) })
+  renderer.setSize(innerWidth-264,innerHeight-64); if(composer){ composer.setSize(innerWidth-264,innerHeight-64); applyAoSize() } })
 renderer.setSize(innerWidth-264,innerHeight-64); camera.aspect=(innerWidth-264)/(innerHeight-64); camera.updateProjectionMatrix()
-if(composer) composer.setSize(innerWidth-264,innerHeight-64)
+if(composer){ composer.setSize(innerWidth-264,innerHeight-64); applyAoSize() }
 const appClock=new THREE.Clock()
-let breathePrev=0
+let breathePrev=0, lastT=0
 renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
+  const dt=t-lastT; lastT=t
   controls.update()
   /* Kamera-"Atmen": minimale vertikale Drift als Delta — begrenzt, driftet nie weg */
   { const b=Math.sin(t*sceneConfig.camera.breatheSpeed*Math.PI*2)*sceneConfig.camera.breatheAmp
@@ -2579,16 +2615,19 @@ renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
     updateLife(t)
     waterTex.offset.x=t*.05
     waterTex.offset.y=t*.016+Math.sin(t*.6)*.02 }
-  if(sc===scene&&composer&&state.settings.effects){ composer.render() } else { renderer.render(sc,camera) }
+  if(sc===scene&&composer&&state.settings.effects){ perfTick(dt); composer.render() } else { renderer.render(sc,camera) }
   updateLabels() })
 { const bell=document.querySelector('.bellb')
   if(bell){ bell.style.position='relative'
     const d=document.createElement('span'); d.id='bellDot'
     d.style.cssText='position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:99px;background:#EF4444;display:none'
     bell.appendChild(d) } }
+/* Statische Kulisse: Weltmatrizen einmal berechnen und einfrieren — spart CPU-Zeit pro Frame.
+   (Wind/Partikel animieren über Shader-Uniforms bzw. Instanz-/Positionsattribute, nicht über Matrizen.) */
+;[buildingGroup,genericGroup].forEach(g=>{ g.updateMatrixWorld(true); g.traverse(o=>o.matrixAutoUpdate=false) })
 rebuildTables(); rebuildPartners(); applyMode(); syncScene(); render()
 /* Einziger 3D-Tuning-Handle: Werte in .config ändern, dann .applyMode() — ersetzt die alten window.__*-Streuungen */
-window.__kommilo3d={ config:sceneConfig, applyMode, camera, controls, renderer, composer, info:()=>renderer.info.render }
+window.__kommilo3d={ config:sceneConfig, applyMode, setQualityTier, tier:()=>qualityTier, camera, controls, renderer, composer, info:()=>renderer.info.render }
 window.__payPoll=0
 if(location.search.indexOf('paid=1')>=0){ history.replaceState({},'',location.pathname)
   toast('Zahlung wird bestätigt …','Einen Moment — deine Credits kommen gleich.')
