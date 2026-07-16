@@ -198,6 +198,7 @@ input:focus,select:focus{border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,22
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { Sky } from 'three/addons/objects/Sky.js'
+import { Water } from 'three/addons/objects/Water.js'
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
@@ -285,6 +286,12 @@ const sceneConfig = {
     blendIntensity: .95,       // how strongly AO multiplies the beauty pass
   },
   vignette: { offset: 1.0, darkness: 1.22 },  // three-VignetteShader-Skala: >1 dunkelt wirklich ab (~0.3 in Postprocessing-Lib-Skala)
+  water: {                     // echtes Wasser (three/addons Water): planare Echtzeit-Spiegelung
+    textureSize: 512,          // Reflexions-Rendertarget — 512 reicht, Normal-Distortion verwischt Details ohnehin
+    size: 22,                  // Ripple-Frequenz des Normal-Samplings (Water-Shader ist auf Ozeanmaße kalibriert)
+    flowSpeed: .4,             // Zeit-Multiplikator der Wellenbewegung
+    reflectEveryN: 2,          // Spiegelung nur jedes n-te Frame rendern — halbiert die Zusatzkosten des 2. Szenen-Renders
+  },
   modes: {
     /* ---- TAG: soft late-afternoon sun; photos 2/3 (bright neutral interior) ---- */
     tag: {
@@ -300,7 +307,7 @@ const sceneConfig = {
       lampEmissive: 1.1, curtainEmissive: .06, bulbEmissive: .05, dlEmissive: .05,
       streetLamp: { emissive: .05, intensity: 0 },
       terrasseIntensity: 0, stLightIntensity: 0,
-      water: { color: '#2b4634', envMapIntensity: 1.1, normalScale: .55, roughness: .16 },
+      water: { color: '#2b4634', sunColor: '#fff3dd', distortion: 1.8 }, // Flusston + Sonnenglitzer; distortion verwirbelt die Spiegelung
       groundBounce: '#8f9a7d', // grass-green ground plate colour inside the generated IBL
     },
     /* ---- NACHT: blue hour — deep navy sky, warm glowing interior (photos 1/4/5) ---- */
@@ -318,7 +325,7 @@ const sceneConfig = {
       lampEmissive: 4.4, curtainEmissive: 1.05, bulbEmissive: 2.8, dlEmissive: 2.4,
       streetLamp: { emissive: 2.4, intensity: 11 },
       terrasseIntensity: 18, stLightIntensity: 11,
-      water: { color: '#0d151c', envMapIntensity: .5, normalScale: .75, roughness: .12 },
+      water: { color: '#0d151c', sunColor: '#2a3c58', distortion: 2.6 }, // dunkles Nachtwasser, Mond-/Lampenspiegelung stärker verwirbelt
       groundBounce: '#1a2026', // night ground plate inside the generated IBL
     },
   },
@@ -725,7 +732,8 @@ function hstool(x,y,z){ const t2=new THREE.Mesh(stoolGeo,M.chair); t2.position.s
   hstool(x-.4,F1+.19,z-.6); hstool(x+.4,F1+.19,z-.6) })
 const coreMat=new THREE.MeshStandardMaterial({color:'#d6d7d9',roughness:.9})
 B(4,CLEAR-.02,3,coreMat,14,F0+CLEAR/2,-11.5); B(4,CLEAR-.02,3,coreMat,14,F1+CLEAR/2,-11.5)
-B(.09,2.36,.12,M.steelWhite,-1.25,F0+1.18,HZ); B(.09,2.36,.12,M.steelWhite,1.25,F0+1.18,HZ); B(2.6,.1,.12,M.steelWhite,0,F0+2.4,HZ,0,false)
+/* Eingangsportal an der SÜDfassade — die Tür liegt gegenüber dem Parkplatz (Nutzerkorrektur) */
+B(.09,2.36,.12,M.steelWhite,-1.25,F0+1.18,-HZ); B(.09,2.36,.12,M.steelWhite,1.25,F0+1.18,-HZ); B(2.6,.1,.12,M.steelWhite,0,F0+2.4,-HZ,0,false)
 
 /* ===== Tische & Menschen (reale Proportionen, gedeckte Farben) ===== */
 /* Menschen-Paletten: 6 Hauttöne, Haare inkl. 2× Blond (Foto-Referenz: helle Studierende gut sichtbar),
@@ -828,7 +836,7 @@ function poseStand(F){ const B=F.B, s=F.s, w=(s%2?1:-1)
 /* Stehtisch-Pose: ein Unterarm liegt auf der hohen Platte */
 function poseLean(F,side){ poseStand(F); const B=F.B
   B['sh'+side].rotation.x=-.7; B['el'+side].rotation.x=-.5 }
-function registerFigure(F,mode,opts){ const e=Object.assign({F,mode,ph:F.s*1.7+(F.s%7),dead:false},opts||{})
+function registerFigure(F,mode){ const e={F,mode,ph:F.s*1.7+(F.s%7),dead:false}
   F.root.userData.fig=e; FIGURES.push(e); return e }
 /* Kompatible Wrapper für bestehende Aufrufstellen */
 function person(g,x,z,ry,seed){ const F=makeFigure(seed)
@@ -839,12 +847,6 @@ function standPerson(gp,x,z,ry,seed){ const F=makeFigure(seed)
   F.root.position.set(x,0,z); F.root.rotation.y=ry
   poseStand(F); registerFigure(F,'stand')
   gp.add(F.root) }
-/* Gehende Figur entlang eines Pfads (Ping-Pong), echter Gangzyklus in updateLife */
-function walker(path,seed,speed){ const F=makeFigure(seed)
-  peopleGroup.add(F.root)
-  const segLen=[]; let len=0
-  for(let k=0;k<path.length-1;k++){ const l=Math.hypot(path[k+1][0]-path[k][0],path[k+1][1]-path[k][1]); segLen.push(l); len+=l }
-  registerFigure(F,'walk',{path,segLen,len,len2:len*2,d:((seed*7)%13)/13*len*2,speed:speed||1.05}) }
 /* ===== Park: entsättigt, große Parkbäume mit hoher Krone ===== */
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(180,210),M.grass); ground.rotation.x=-Math.PI/2; ground.position.y=-.002; ground.position.z=-25; ground.receiveShadow=true; buildingGroup.add(ground)
 const apron=new THREE.Mesh(new THREE.PlaneGeometry(W+2*OV+3.4,D+2*OV+3.4),M.paver); apron.rotation.x=-Math.PI/2; apron.position.y=.015; apron.receiveShadow=true; buildingGroup.add(apron)
@@ -861,16 +863,8 @@ instanced(new THREE.CylinderGeometry(.05,.055,.84,10),new THREE.MeshStandardMate
       const bp=new THREE.Mesh(new THREE.BoxGeometry(.05,.52,.05),bsteel); bp.position.set(lx,.65,.315); bp.rotation.x=-.22; g.add(bp) })
     buildingGroup.add(g) }
   bench(8,17.6,0); bench(-8,17.6,0); bench(-2,-17.6,Math.PI); bench(21.3,6,Math.PI/2) }
-/* Pockelsstraße: Asphalt (Noise-Albedo + Relief + Roughness-Variation → leicht feuchter Look wie im Juli-Foto) */
-const asphaltT=noiseTex('#7e7f85',['#6f7076','#8b8c92','#75767c'],4200); asphaltT.repeat.set(3,24)
-/* Roughness ist ein Datenkanal: eigene Textur ohne sRGB-Dekodierung, sonst wird der Wert ~halbiert (glänzend) */
-const asphaltR=asphaltT.clone(); asphaltR.colorSpace=THREE.NoColorSpace; asphaltR.needsUpdate=true
-const asphaltMat=new THREE.MeshStandardMaterial({color:'#eceded',map:asphaltT,roughness:sceneConfig.materials.asphaltRoughness,
-  normalMap:normalFromTex(asphaltT,NS.asphalt),roughnessMap:asphaltR})
-const street=new THREE.Mesh(new THREE.PlaneGeometry(6.4,76),asphaltMat)
-street.rotation.x=-Math.PI/2; street.position.set(27,.012,0); street.receiveShadow=true; buildingGroup.add(street)
-B(.28,.13,76,new THREE.MeshStandardMaterial({color:'#c9c6bd',roughness:.9}),23.72,.065,0,0,false,true)
-for(let z=-14;z<=34;z+=4){ const d=new THREE.Mesh(new THREE.PlaneGeometry(.12,1.6),new THREE.MeshStandardMaterial({color:'#e8e8e4',roughness:.9})); d.rotation.x=-Math.PI/2; d.position.set(27,.018,z); buildingGroup.add(d) }
+/* Ehemalige Autostraße neben dem Studierendenhaus → geflieste Fahrradstraße (Nutzerkorrektur);
+   Fahrbahn + Kantstein entstehen im Site-Block unten (paverMat), die Lampen bleiben als Wegbeleuchtung */
 const stLampMat=new THREE.MeshStandardMaterial({color:'#e8eaec',emissive:0xffe2ae,emissiveIntensity:.05})
 const stLights=[]
 function streetLamp(x,z){ const g=new THREE.Group(); g.position.set(x,0,z)
@@ -894,18 +888,36 @@ function paverMat(rx,ry2){ const m2=new THREE.MeshStandardMaterial({roughness:.9
   const curbM=new THREE.MeshStandardMaterial({color:'#b8b5ac',roughness:.85})
   ;[-19.15,-25.85].forEach(cz=>{ const c2=new THREE.Mesh(new THREE.BoxGeometry(44,.09,.24),curbM)
     c2.position.set(8,.045,cz); c2.receiveShadow=true; buildingGroup.add(c2) })
-  /* Plaza-Promenade entlang der Altgebäude-Westfassade (Hauptachse Richtung Audimax) */
-  const plaza=new THREE.Mesh(new THREE.PlaneGeometry(19,64),paverMat(10,34))
-  plaza.rotation.x=-Math.PI/2; plaza.position.set(1.5,.012,-60); plaza.receiveShadow=true; buildingGroup.add(plaza)
-  /* Parkplatz östlich des Altgebäudes (Foto: Stellflächen mit Hecke am Rand) */
-  const park=new THREE.Mesh(new THREE.PlaneGeometry(10,15),antiTiling(new THREE.MeshStandardMaterial({color:'#85868c',roughness:.95}),.08))
-  park.rotation.x=-Math.PI/2; park.position.set(35.5,.011,-36.5); park.receiveShadow=true; buildingGroup.add(park)
-  /* Baumscheiben: Steinkante + Mulch — Straßenbäume stehen im Belag, nicht im Wildwuchs */
+  /* Geflieste Fahrradstraße auf der Trasse der alten Autostraße (Nutzerkorrektur: kein Autoweg) */
+  const rad=new THREE.Mesh(new THREE.PlaneGeometry(3.6,76),paverMat(2.2,44))
+  rad.rotation.x=-Math.PI/2; rad.position.set(27,.012,0); rad.receiveShadow=true; buildingGroup.add(rad)
+  B(.28,.13,76,new THREE.MeshStandardMaterial({color:'#c9c6bd',roughness:.9}),25.06,.065,0,0,false,true)
+  /* Plaza-Promenade südlich des Parkplatzes entlang der Altgebäude-Westfassade */
+  const plaza=new THREE.Mesh(new THREE.PlaneGeometry(19,42),paverMat(10,22))
+  plaza.rotation.x=-Math.PI/2; plaza.position.set(1.5,.012,-71); plaza.receiveShadow=true; buildingGroup.add(plaza)
+  /* Parkplatz ZWISCHEN Studierendenhaus und Altgebäude (Nutzerfoto "3 Via Dentis"):
+     Asphalt + markierte Stellflächen, bewusst OHNE Autos (Nutzeranweisung) */
+  const parkT=noiseTex('#7e7f85',['#6f7076','#8b8c92','#75767c'],4200); parkT.repeat.set(8,11)
+  /* Roughness ist ein Datenkanal: eigene Textur ohne sRGB-Dekodierung, sonst wird der Wert ~halbiert (glänzend) */
+  const parkR=parkT.clone(); parkR.colorSpace=THREE.NoColorSpace; parkR.needsUpdate=true
+  const park=new THREE.Mesh(new THREE.PlaneGeometry(16,23),new THREE.MeshStandardMaterial({color:'#eceded',map:parkT,
+    roughness:sceneConfig.materials.asphaltRoughness,normalMap:normalFromTex(parkT,NS.asphalt),roughnessMap:parkR}))
+  park.rotation.x=-Math.PI/2; park.position.set(3,.011,-38.4); park.receiveShadow=true; buildingGroup.add(park)
+  /* Stellplatz-Markierungen: Ostreihe zur Altgebäude-Fassade, Westreihe zur Hecke, Gasse dazwischen */
+  const stalls=[]
+  for(let z=-28.6;z>=-48.6;z-=2.5){ stalls.push({x:8.2,y:.02,z},{x:-2.3,y:.02,z}) }
+  instanced(new THREE.BoxGeometry(5.2,.012,.12),new THREE.MeshStandardMaterial({color:'#e8e8e4',roughness:.9}),stalls,false)
+  /* Vorplatz zwischen Altgebäude-Haupteingang (Ost) und Audimax */
+  const fore=new THREE.Mesh(new THREE.PlaneGeometry(12,26),paverMat(7,14))
+  fore.rotation.x=-Math.PI/2; fore.position.set(31.6,.011,-60); fore.receiveShadow=true; buildingGroup.add(fore)
+  /* Baumscheiben: Steinkante + Mulch — JEDER Baum steht in einer gefassten Scheibe
+     (Nutzeranweisung: "Töpfe" wie am Altgebäude für alle Bäume); Kantenmaß wächst mit dem Baum */
   const pitEdgeM=new THREE.MeshStandardMaterial({color:'#9d968b',roughness:.9})
   const mulchM=new THREE.MeshStandardMaterial({color:'#4b3d2e',roughness:1})
-  treePit=(x,z)=>{ const e2=new THREE.Mesh(new THREE.BoxGeometry(2,.12,2),pitEdgeM); e2.position.set(x,.05,z); e2.receiveShadow=true; buildingGroup.add(e2)
-    const m2=new THREE.Mesh(new THREE.CylinderGeometry(.85,.85,.1,12),mulchM); m2.position.set(x,.075,z); buildingGroup.add(m2) }
-  /* Fahrrad-Piktogramme auf der Asphaltstraße (Street-View-Detail) */
+  treePit=(x,z,s=1)=>{ const w=1.1+s*.45
+    const e2=new THREE.Mesh(new THREE.BoxGeometry(w,.12,w),pitEdgeM); e2.position.set(x,.05,z); e2.receiveShadow=true; buildingGroup.add(e2)
+    const m2=new THREE.Mesh(new THREE.CylinderGeometry(w*.42,w*.42,.1,12),mulchM); m2.position.set(x,.075,z); buildingGroup.add(m2) }
+  /* Fahrrad-Piktogramme auf der Fahrradstraße (Street-View-Detail) */
   const picto=(()=>{ const c2=cvs(128),x2=c2.getContext('2d'); x2.clearRect(0,0,128,128)
     x2.strokeStyle='#e8e8e4'; x2.lineWidth=7; x2.lineCap='round'
     x2.beginPath(); x2.arc(36,90,20,0,Math.PI*2); x2.stroke()
@@ -917,32 +929,19 @@ function paverMat(rx,ry2){ const m2=new THREE.MeshStandardMaterial({roughness:.9
   const pictoM=new THREE.MeshStandardMaterial({map:picto,transparent:true,alphaTest:.3,roughness:.9})
   ;[4,15].forEach(pz=>{ const d2=new THREE.Mesh(new THREE.PlaneGeometry(1.1,1.1),pictoM)
     d2.rotation.x=-Math.PI/2; d2.rotation.z=Math.PI; d2.position.set(27,.02,pz); buildingGroup.add(d2) })
-  /* Einfache Kontext-Autos (Parkplatz + Straßenrand) */
-  const wheelG=new THREE.CylinderGeometry(.31,.31,.22,14), wheelM=new THREE.MeshStandardMaterial({color:'#22262b',roughness:.6})
-  const carGlassM=new THREE.MeshStandardMaterial({color:'#1d232a',roughness:.15,metalness:.3})
-  function car(x,z,ry,col){ const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=ry
-    const bodyM=new THREE.MeshStandardMaterial({color:col,roughness:.32,metalness:.45})
-    const b=new THREE.Mesh(new THREE.BoxGeometry(1.78,.5,4.2),bodyM); b.position.y=.56; b.castShadow=true; g.add(b)
-    const cab=new THREE.Mesh(new THREE.BoxGeometry(1.6,.5,2.14),bodyM); cab.position.set(0,1.02,-.16); cab.castShadow=true; g.add(cab)
-    const gl=new THREE.Mesh(new THREE.BoxGeometry(1.64,.34,2.2),carGlassM); gl.position.set(0,1.05,-.16); g.add(gl)
-    ;[[-.82,1.35],[.82,1.35],[-.82,-1.45],[.82,-1.45]].forEach(([wx,wz])=>{ const w=new THREE.Mesh(wheelG,wheelM)
-      w.rotation.z=Math.PI/2; w.position.set(wx,.31,wz); g.add(w) })
-    buildingGroup.add(g) }
-  car(34,-31.5,Math.PI/2,'#c9ccd0'); car(34,-34.5,Math.PI/2,'#e8e8e6'); car(34,-37.8,Math.PI/2,'#7e2f2c'); car(34,-41,Math.PI/2,'#3c4c63')
-  car(28.3,8.5,0,'#4a4d52'); car(28.3,19,0,'#c9ccd0')
   /* Fahrradbügel vor der Altgebäude-Schmalseite (Räder folgen nach der bike()-Definition) */
   for(let i=0;i<3;i++){ const bar=new THREE.Mesh(new THREE.TorusGeometry(.42,.03,8,16,Math.PI),M.alu)
     bar.position.set(12.6+i*1.6,.02,-27.2); buildingGroup.add(bar) }
   /* Poller entlang Via-Dentis-Nordkante + Plaza-Westkante */
   const siteBolls=[]
   for(let x=-10;x<=22;x+=2.6) siteBolls.push({x,y:.42,z:-18.7})
-  for(let z=-32;z>=-86;z-=6) siteBolls.push({x:-7.6,y:.42,z})
+  for(let z=-52;z>=-86;z-=6) siteBolls.push({x:-7.6,y:.42,z})
   instanced(new THREE.CylinderGeometry(.05,.055,.84,10),new THREE.MeshStandardMaterial({color:'#2b2b2e',roughness:.55,metalness:.35}),siteBolls)
-  /* Formale Heckenbänder (Plaza-Ostkante vor dem Altgebäude), Inseln am Promenaden-Mund,
-     geschwungene Hecke am Parkplatzrand — urbaner Campus statt Wildwuchs */
-  HEDGE_RUNS.push([9.9,-40,12,Math.PI/2,.68],[9.9,-58,12,Math.PI/2,.68],[9.9,-76,12,Math.PI/2,.68])
-  HEDGE_RUNS.push([-2.5,-27.4,6,0,.6],[6.5,-27.4,5,0,.6])
-  HEDGE_RUNS.push([30.4,-32.5,6,Math.PI/2+.16,1.12],[31.2,-38.5,6,Math.PI/2-.13,1.16],[30.6,-43.5,4,Math.PI/2+.1,1.1])
+  /* Formale Heckenbänder (Plaza-Ostkante vor dem Altgebäude), Einfahrt-Inseln,
+     Heckenfassung des Parkplatzes an West- und Südkante (Nutzerfoto) */
+  HEDGE_RUNS.push([9.9,-58,12,Math.PI/2,.68],[9.9,-76,12,Math.PI/2,.68])
+  HEDGE_RUNS.push([-3.2,-27.4,4.6,0,.6],[7.3,-27.4,4.4,0,.6])
+  HEDGE_RUNS.push([-5.9,-38.5,21,Math.PI/2,1.05],[2.8,-49.9,16,0,1.0])
 }
 /* Hecken: über hedgeRun() (Definition nach LEAF_TEX) — Flussufer-Reihen wie im Foto: */
 HEDGE_RUNS.push([-10.5,22.6,13.5,0,1.0],[9,22.6,8.5,0,1.0])
@@ -963,12 +962,20 @@ function barkTexture(){ const s=256,c=cvs(s),x=c.getContext('2d')
     const px=Math.random()*s, py=Math.random()*s
     x.beginPath(); x.moveTo(px,py); x.lineTo(px+4+Math.random()*10,py+(Math.random()-.5)*4); x.stroke() }
   x.globalAlpha=1; const t=tx(c); t.repeat.set(2,2.4); return t } // v-Repeat 2.4: keine überdehnte Rinde am 4-m-Stamm
-function leafTexture(){ const s=256,c=cvs(s),x=c.getContext('2d'); x.clearRect(0,0,s,s)
-  const cols=['#3f5a33','#4c6a3d','#5a7a49','#6b8a57']
-  for(let i=0;i<760;i++){ const a=Math.random()*Math.PI*2, rr=Math.pow(Math.random(),.62)*.47*s
-    x.fillStyle=cols[(Math.random()*4)|0]; x.globalAlpha=.8+Math.random()*.2
-    x.save(); x.translate(s/2+Math.cos(a)*rr,s/2+Math.sin(a)*rr*.94); x.rotate(Math.random()*Math.PI)
-    x.beginPath(); x.ellipse(0,0,2.2+Math.random()*3.2,1.1+Math.random()*1.7,0,0,Math.PI*2); x.fill(); x.restore() }
+/* Laub v2 (Nutzeranweisung "echte Blätter"): einzelne Blattspreiten mit Spitze und heller
+   Mittelrippe statt Ellipsen-Punkten — die Büschel-Karten lesen sich als Laub, nicht als Rauschen */
+function leafTexture(){ const s=512,c=cvs(s),x=c.getContext('2d'); x.clearRect(0,0,s,s)
+  const cols=['#3f5a33','#4c6a3d','#5a7a49','#6b8a57','#77965f']
+  const leaf=(lx,ly,ang,len,wid,col)=>{ x.save(); x.translate(lx,ly); x.rotate(ang)
+    x.fillStyle=col
+    x.beginPath(); x.moveTo(0,0); x.quadraticCurveTo(len*.5,-wid,len,0); x.quadraticCurveTo(len*.5,wid,0,0); x.fill()
+    x.strokeStyle='rgba(255,255,255,.26)'; x.lineWidth=1
+    x.beginPath(); x.moveTo(len*.1,0); x.lineTo(len*.9,0); x.stroke()
+    x.restore() }
+  for(let i=0;i<900;i++){ const a=Math.random()*Math.PI*2, rr=Math.pow(Math.random(),.6)*.47*s
+    x.globalAlpha=.85+Math.random()*.15
+    leaf(s/2+Math.cos(a)*rr, s/2+Math.sin(a)*rr*.94, Math.random()*Math.PI*2,
+      9+Math.random()*13, 2.6+Math.random()*2.6, cols[(Math.random()*5)|0]) }
   x.globalAlpha=1; const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; return t }
 const LEAF_TEX=leafTexture()
 /* Einzelblatt mit Spreite, Rippen und Stiel — Falllaub liest sich als Blatt statt als Viereck.
@@ -1042,6 +1049,7 @@ function tree(x,z,s,seed){
   let r=seed*999+7; const rnd=()=>{ r=(r*16807)%2147483647; return (r-1)/2147483646 }
   const type=Math.abs(seed)%3
   const g=new THREE.Group(); g.position.set(x,0,z); g.scale.setScalar(s)
+  treePit(x,z,s) // jeder Baum bekommt seine steingefasste Scheibe (Nutzeranweisung)
   const branches=[], tips=[], mids=[], up=new THREE.Vector3(0,1,0)
   const spread=type===1?.36+rnd()*.28:.62+rnd()*.48 // oval = enger, rund/geschichtet = breiter
   function grow(base,dir,len,rad,depth){
@@ -1100,12 +1108,10 @@ function tree(x,z,s,seed){
 /* Urbaner Campus: dichter Bestand nur zur Oker-Seite (+z); Süden = Straßenbäume in
    Baumscheiben entlang Via Dentis/Plaza (Street-View-Layout) */
 ;[[-21.5,20,2.9,21],[-20,-16.5,2.8,22],[10,21.8,2.7,23],[-14,-16.2,2.6,24],[-27.5,5,3.0,25],[16.9,22,2.5,26],
-  [-31,-6,1.9,2],[-31,14,1.6,3],[35,-2,1.5,4],[34,-22,1.6,5],[-33,3,1.5,6],[2,24,1.5,7],[-4,-33,1.9,8],[6,-33,1.9,9],[33.5,-14,1.8,10],[-29,-19,1.7,11],[34,16,1.7,12],[6,27,1.5,13],[-22,9,1.9,14],[33,8,1.6,15],
-  [-5.5,-44,2.2,27],[-5.5,-58,2.0,28],[-5.5,-72,2.1,29],[-5.5,-86,1.8,30]].forEach(a=>tree(...a))
-/* Baumscheiben unter allen Bäumen, die im Belag stehen */
-;[[-4,-33],[6,-33],[-5.5,-44],[-5.5,-58],[-5.5,-72],[-5.5,-86],[34,-22]].forEach(([px,pz])=>treePit(px,pz))
+  [-31,-6,1.9,2],[-31,14,1.6,3],[35,-2,1.5,4],[34,-22,1.6,5],[-33,3,1.5,6],[2,24,1.5,7],[-7.6,-31,1.9,8],[-7.6,-40,1.9,9],[33.5,-14,1.8,10],[-29,-19,1.7,11],[34,16,1.7,12],[6,27,1.5,13],[-22,9,1.9,14],[33,8,1.6,15],
+  [-13,-44,2.2,27],[-5.5,-58,2.0,28],[-5.5,-72,2.1,29],[-5.5,-86,1.8,30]].forEach(a=>tree(...a))
 /* Falllaub unter den Bäumen — wie auf den Herbstfotos */
-{ const LIT=[[-21.5,20],[-20,-16.5],[10,21.8],[-14,-16.2],[-27.5,5],[16.9,22],[-31,-6],[-4,-33],[-5.5,-44],[-22,9]]
+{ const LIT=[[-21.5,20],[-20,-16.5],[10,21.8],[-14,-16.2],[-27.5,5],[16.9,22],[-31,-6],[-7.6,-31],[-13,-44],[-22,9]]
   const cols=sceneConfig.materials.autumnPalette
   const geo=new THREE.PlaneGeometry(.17,.12), n=LIT.length*150
   const mat=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:1,side:THREE.DoubleSide,map:LEAF_CARD_TEX,alphaTest:.4})
@@ -1185,12 +1191,14 @@ function bladeTexture(){ const s=128,c=cvs(s),x=c.getContext('2d'); x.clearRect(
     const px=(Math.random()-.5)*90, pz=(Math.random()-.5)*72
     if(Math.abs(px)<AX && Math.abs(pz)<AZ) continue
     if(px>-14&&px<30&&pz<-19.3&&pz>-25.7) continue // Via Dentis (Klinker)
-    if(pz<-27&&px>-8&&px<41) continue              // Plaza + Altgebäude + Parkplatz
+    if(pz<-26.8&&px>-8&&px<11.2) continue          // Parkplatz + Plaza
+    if(px>10.8&&px<25.2&&pz<-28) continue          // Altgebäude
+    if(px>25.2&&px<38&&pz<-46) continue            // Vorplatz vor dem Audimax
     if(px<-12&&pz<-26) continue                    // gelbes Haus + Turm (Westseite)
     if(pz>39+Math.sin(px*.045)*3-4.8&&pz<39+Math.sin(px*.045)*3+4.8) continue
-    const d1=Math.abs((px-28)*Math.cos(.32)-(pz-9)*Math.sin(.32))
+    if(Math.abs(px-27)<2.3) continue               // Fahrradstraße (achsparallel bei x=27)
     const d2=Math.abs((px+26)*Math.cos(1.2)+(pz+12)*Math.sin(1.2))
-    if(d1<2.6||d2<2.3) continue
+    if(d2<2.3) continue
     e.set(0,Math.random()*Math.PI,(Math.random()-.5)*.16); q.setFromEuler(e)
     sv.set(.12+Math.random()*.08,.05+Math.random()*.06,1)
     m4.compose(new THREE.Vector3(px,0,pz),q,sv); gi.setMatrixAt(placed,m4)
@@ -1231,7 +1239,7 @@ function bench(x,z,ry){ const g=new THREE.Group(); g.position.set(x,0,z); g.rota
   ;[0,.09,.18].forEach(off=>{ const s=new THREE.Mesh(new THREE.BoxGeometry(1.8,.04,.085),wd); s.position.set(0,.46,off-.14); s.castShadow=true; g.add(s) })
   ;[.6,.74].forEach(y=>{ const s=new THREE.Mesh(new THREE.BoxGeometry(1.8,.04,.085),wd); s.position.set(0,y,.26); s.rotation.x=-.25; g.add(s) })
   buildingGroup.add(g) }
-bench(-13,23.5,Math.PI); bench(26,2,-Math.PI/2)
+bench(-13,23.5,Math.PI); bench(23.8,2,-Math.PI/2)
 for(let i=0;i<9;i++){ const b=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.8,8),dk); b.position.set(-16+i*4,.4,24.5); b.castShadow=true; buildingGroup.add(b) }
 let bikeNr=0
 function bike(x,z,ry){ const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=ry
@@ -1291,8 +1299,9 @@ bike(4.5,15.6,1.2); bike(-13.5,15.8,-1.4)
   const doorM=new THREE.MeshStandardMaterial({color:'#4a3a28',roughness:.7})
   /* TU-Altgebäude nach Originalfotos: Rustika, Bogenfenster, Balustrade, Risalit, Glasdach */
   /* Lage nach Street View: Langachse Nord-Süd, SCHMALSEITE (z=-29) gegenüber dem
-     Studierendenhaus-Eingang, Portale/Risalit nach Westen zur Plaza (ry=-90°) */
-  { const A=new THREE.Group(); A.position.set(18,0,-60); A.rotation.y=-Math.PI/2; buildingGroup.add(A); SITE.alt=A
+     Studierendenhaus-Eingang. Nutzerkorrektur: Haupteingang (Portale/Risalit) liegt auf der
+     RECHTEN Seite vom Eingangsblick aus = OSTEN (ry=+90°); Westfassade grenzt an den Parkplatz */
+  { const A=new THREE.Group(); A.position.set(18,0,-60); A.rotation.y=Math.PI/2; buildingGroup.add(A); SITE.alt=A
     const L2=62, D2=14
     const rustTex=(()=>{ const c2=cvs(512),x2=c2.getContext('2d')
       for(let row=0;row<10;row++){ const y=row*51
@@ -1420,24 +1429,28 @@ bike(4.5,15.6,1.2); bike(-13.5,15.8,-1.4)
         const ridge=new THREE.Mesh(new THREE.BoxGeometry(grx*2,.14,.14),trimM); ridge.position.set(0,13.0+gh,-2.5); R.add(ridge)
         const base2=new THREE.Mesh(new THREE.BoxGeometry(gw+.4,.3,gd+.4),trimM); base2.position.set(0,12.95,-2.5); R.add(base2) } } }
   /* Hochhaus-Turm — bindende Ordnung: ganz links + am weitesten vom Eingang, hinter dem
-     gelben Haus. Fassade nach Referenzfoto: HELLES Beton-/Alu-Raster, dunkle eingesetzte
-     Scheiben, ~17 Geschosse — präzises Gitter, kein Noise. */
+     gelben Haus. Nutzerkorrektur: vertikal lang, horizontal HALB so breit wie zuvor —
+     schlanke Scheibe. Fassade: helles Raster, dunkle Scheiben, 17 Geschosse; pro
+     Fassadenbreite eigene Bay-Zahl (Material-Array), damit die Fenster nicht verzerren. */
   const hh=new THREE.Group(); hh.position.set(-52,0,-50); hh.rotation.y=.3; buildingGroup.add(hh); SITE.tower=hh
-  const hhTex=(()=>{ const c2=cvs(512),x2=c2.getContext('2d')
+  const hhTex=CO=>{ const c2=cvs(512),x2=c2.getContext('2d')
     x2.fillStyle='#c2c7cd'; x2.fillRect(0,0,512,512)                    // helles Rasterskelett
-    const FL=17, CO=9, ch=512/FL, cw=512/CO
+    const FL=17, ch=512/FL, cw=512/CO
     for(let f=0;f<FL;f++)for(let k=0;k<CO;k++){
       const lit=((f*7+k*3)%11)<2                                       // wenige erleuchtete Scheiben, deterministisch
       x2.fillStyle=lit?'#aebfce':'#2f3a45'
       x2.fillRect(k*cw+5,f*ch+6,cw-10,ch-11)                            // dunkle Scheibe im hellen Rahmen
       x2.fillStyle='#9aa2ab'                                            // Brüstungsband unter der Scheibe
       x2.fillRect(k*cw+5,f*ch+ch-5,cw-10,2) }
-    const t2=tx(c2); return t2 })()
-  const hhM=new THREE.MeshStandardMaterial({map:hhTex,roughness:.5,metalness:.12})
-  const hhB=new THREE.Mesh(new THREE.BoxGeometry(16,52,13),hhM); hhB.position.y=26; hhB.castShadow=true; hh.add(hhB)
-  const hhCap=new THREE.Mesh(new THREE.BoxGeometry(17.4,.6,14.4),new THREE.MeshStandardMaterial({color:'#b9bfc7',roughness:.55}))
+    return tx(c2) }
+  const hhMN=new THREE.MeshStandardMaterial({map:hhTex(4),roughness:.5,metalness:.12})   // Schmalfassade (8 m): 4 Bays
+  const hhMW=new THREE.MeshStandardMaterial({map:hhTex(6),roughness:.5,metalness:.12})   // Breitfassade (11 m): 6 Bays
+  const hhMT=new THREE.MeshStandardMaterial({color:'#c2c7cd',roughness:.55})
+  const hhB=new THREE.Mesh(new THREE.BoxGeometry(8,52,11),[hhMW,hhMW,hhMT,hhMT,hhMN,hhMN])
+  hhB.position.y=26; hhB.castShadow=true; hh.add(hhB)
+  const hhCap=new THREE.Mesh(new THREE.BoxGeometry(9.4,.6,12.4),new THREE.MeshStandardMaterial({color:'#b9bfc7',roughness:.55}))
   hhCap.position.y=52.5; hh.add(hhCap) // schlank auskragendes Dachvordach
-  const tech=new THREE.Mesh(new THREE.BoxGeometry(6,2.2,5),new THREE.MeshStandardMaterial({color:'#8d97a5',roughness:.8})); tech.position.y=53.8; hh.add(tech)
+  const tech=new THREE.Mesh(new THREE.BoxGeometry(4.5,2.2,4.2),new THREE.MeshStandardMaterial({color:'#8d97a5',roughness:.8})); tech.position.y=53.8; hh.add(tech)
   const ant=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,4,6),new THREE.MeshStandardMaterial({color:'#5c646e',roughness:.5})); ant.position.y=56.9; hh.add(ant)
   /* Gelbes 2-geschossiges Giebelhaus (zwischen Eingang und Turm) */
   /* Gelbes Giebelhaus — bindende Ordnung: ZWISCHEN Turm und Altgebäude, vor dem Turm */
@@ -1452,13 +1465,13 @@ bike(4.5,15.6,1.2); bike(-13.5,15.8,-1.4)
     for(let fl=0;fl<2;fl++)for(let k=0;k<5;k++){ const win=new THREE.Mesh(new THREE.BoxGeometry(.9,1.4,.08),winGlass)
       win.position.set(-4.8+k*2.4,1.8+fl*2.6,4.55); gb.add(win) }
     const dr=new THREE.Mesh(new THREE.BoxGeometry(1.2,2.3,.1),doorM); dr.position.set(0,1.15,-4.55); gb.add(dr) }
-  /* Universitätsbibliothek (weiße Moderne): bindende Ordnung — auf der GEGENSEITE des
-     Pavillons, jenseits des breiteren Wegs hinter der Oker; Front nach Süden zum Campus */
-  { const au=new THREE.Group(); au.position.set(24,0,62); au.rotation.y=Math.PI/2; buildingGroup.add(au); SITE.lib=au
+  /* Audimax (weiße Moderne) — Nutzerkorrektur: NICHT am Fluss, sondern GEGENÜBER dem
+     Altgebäude-Haupteingang (Ost); Kolonnadenfront nach Westen zum Vorplatz */
+  { const au=new THREE.Group(); au.position.set(47,0,-60); au.rotation.y=Math.PI/2; buildingGroup.add(au); SITE.audimax=au
     const gfGlass=new THREE.Mesh(new THREE.BoxGeometry(20,4,15),new THREE.MeshStandardMaterial({color:'#20262c',roughness:.15,metalness:.4}))
-    gfGlass.position.set(-2,2,0); au.add(gfGlass)
-    const cols2=[] // Stützenreihe entlang der Südkante (instanced() nutzt Weltkoordinaten)
-    for(let k=0;k<8;k++) cols2.push({x:24-7+k*2,y:0,z:62-9.6,sy:4.4})
+    gfGlass.position.set(0,2,-1); au.add(gfGlass) // EG-Glas 1 m hinter die Stützen zurückgesetzt
+    const cols2=[] // Stützenreihe entlang der Westkante (instanced() nutzt Weltkoordinaten)
+    for(let k=0;k<8;k++) cols2.push({x:37.6,y:0,z:-67+k*2,sy:4.4})
     instanced(new THREE.CylinderGeometry(.14,.14,1,10).translate(0,.5,0),new THREE.MeshStandardMaterial({color:'#eef0f1',roughness:.5}),cols2)
     const up=new THREE.Mesh(new THREE.BoxGeometry(26,5.2,19),new THREE.MeshStandardMaterial({color:'#eceff0',roughness:.55}))
     up.position.set(0,7,0); up.castShadow=true; au.add(up)
@@ -1480,12 +1493,42 @@ const bank=new THREE.Mesh(ribbon(9.2,.02),new THREE.MeshStandardMaterial({color:
 bank.receiveShadow=true; buildingGroup.add(bank)
 const bankWet=new THREE.Mesh(ribbon(8.2,.032),new THREE.MeshStandardMaterial({color:'#4a5240',roughness:.9}))
 buildingGroup.add(bankWet)
-const waterTex=new THREE.TextureLoader().load('https://cdn.jsdelivr.net/npm/three@0.169.0/examples/textures/waternormals.jpg',tx2=>{
-  tx2.wrapS=tx2.wrapT=THREE.RepeatWrapping; tx2.repeat.set(26,2.5) })
-const waterMat=new THREE.MeshStandardMaterial({color:0x2b4634,roughness:.16,metalness:.35,
-  normalMap:waterTex,normalScale:new THREE.Vector2(.55,.55),envMapIntensity:1.1})
-const water=new THREE.Mesh(ribbon(7.6,.06),waterMat)
-water.receiveShadow=true; buildingGroup.add(water)
+/* Echtes Wasser (Nutzeranweisung): three/addons-Water mit planarer Echtzeit-Spiegelung —
+   Ufer, Bäume und Nachtlichter spiegeln sich wirklich. Kosten = 1 zusätzlicher Szenen-
+   Render ins kleine Target; über reflectEveryN gedrosselt. In AO_EXCLUDE, damit der
+   GTAO-G-Buffer-Pass nicht den Reflektor mit Override-Material ins Spiegel-Target rendert. */
+/* Reflector-Konvention: die Spiegelebene kommt aus der MESH-Rotation (Geometrie in XY,
+   Normale +Z, Mesh um -90° gekippt wie PlaneGeometry) — ein Ribbon direkt in XZ würde an
+   einer senkrechten Ebene spiegeln. Daher eigener XY-Ribbon nur für das Wasser. */
+function ribbonXY(w){ const segs=160
+  const pos=[],uv=[],idx=[]
+  for(let i=0;i<=segs;i++){ const x=-95+190*i/segs, z=39+Math.sin(x*.045)*3
+    pos.push(x,-(z-w/2),0, x,-(z+w/2),0); uv.push(i/segs,0,i/segs,1)
+    if(i<segs){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2) } }
+  const g2=new THREE.BufferGeometry()
+  g2.setAttribute('position',new THREE.Float32BufferAttribute(pos,3))
+  g2.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2))
+  g2.setIndex(idx); g2.computeVertexNormals(); return g2 }
+/* Wellen-Normalmap prozedural (kachelbar): das npm-/CDN-Paket von three liefert
+   examples/textures/ nicht aus — der frühere Remote-Load blieb daher immer leer */
+const waterTex=(()=>{ const s=256,c=cvs(s),x=c.getContext('2d'),d=x.createImageData(s,s)
+  const H=(i,j)=>{ const u=i/s*Math.PI*2, v=j/s*Math.PI*2 // ganzzahlige Frequenzen → nahtlos
+    return Math.sin(u*3+Math.sin(v*2))*.5+Math.sin(v*4+Math.sin(u*3)*1.3)*.35+Math.sin(u*6+v*5+Math.sin(v*4))*.16+Math.sin(u*9-v*7)*.1 }
+  for(let j=0;j<s;j++)for(let i=0;i<s;i++){
+    const dx=H((i+1)%s,j)-H((i-1+s)%s,j), dy=H(i,(j+1)%s)-H(i,(j-1+s)%s)
+    const nx=-dx*2, ny=-dy*2, il=1/Math.hypot(nx,ny,1), k=(j*s+i)*4
+    d.data[k]=(nx*il*.5+.5)*255; d.data[k+1]=(ny*il*.5+.5)*255; d.data[k+2]=(il*.5+.5)*255; d.data[k+3]=255 }
+  x.putImageData(d,0,0)
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t })()
+const water=new Water(ribbonXY(7.6),{
+  textureWidth:sceneConfig.water.textureSize, textureHeight:sceneConfig.water.textureSize,
+  waterNormals:waterTex, sunDirection:new THREE.Vector3(0,1,0),
+  sunColor:0xffffff, waterColor:0x2b4634, distortionScale:sceneConfig.modes.tag.water.distortion, fog:true })
+water.rotation.x=-Math.PI/2; water.position.y=.06
+water.material.uniforms.size.value=sceneConfig.water.size
+{ let fr=0; const obr=water.onBeforeRender.bind(water)
+  water.onBeforeRender=(...a)=>{ if((fr++%sceneConfig.water.reflectEveryN)===0) obr(...a) } }
+buildingGroup.add(water); AO_EXCLUDE.push(water)
 /* Ufer-Bäume, die sich im Wasser spiegeln */
 tree(-8,39+Math.sin(-8*.045)*3-5.4,1.6,21)
 tree(2,39+Math.sin(2*.045)*3-5.0,1.25,23)
@@ -1540,16 +1583,11 @@ standPerson(peopleGroup,-24,-9,.7,8)
 /* Stehtisch-Figur: Unterarm auf der Platte, ohne Hocker-Clipping */
 { const F=makeFigure(14); F.root.position.set(2.65,0,16.6); F.root.rotation.y=-2.4
   poseLean(F,'R'); registerFigure(F,'stand'); peopleGroup.add(F.root) }
-/* Kleine Gesprächsgruppe am Plaza-Mund — Körper einander zugewandt, eine Geste */
-{ const G=[[-1.2,-28.2,.9,41],[0,-29.5,-2.2,42],[1.4,-28.4,3.7,43]]
+/* Kleine Gesprächsgruppe am Plaza-Kopf südlich des Parkplatzes — Körper einander zugewandt.
+   Keine gehenden Figuren mehr (Nutzeranweisung: "keine laufenden Menschen") */
+{ const G=[[-1.2,-52.2,.9,41],[0,-53.5,-2.2,42],[1.4,-52.4,3.7,43]]
   G.forEach(([px,pz,ry,sd],i)=>{ const F=makeFigure(sd); F.root.position.set(px,0,pz); F.root.rotation.y=ry
     poseStand(F); registerFigure(F,i===1?'talk':'stand'); peopleGroup.add(F.root) }) }
-/* Gehende Studierende: Plaza-Promenade, Via Dentis, Ufer, Apron — Ping-Pong-Pfade */
-walker([[1.5,-31],[1.5,-86]],31,1.05)
-walker([[-3.8,-34],[-3.8,-80]],35,1.18)
-walker([[-11,-22.4],[19,-22.4]],32,.95)
-walker([[-14,19.5],[8,19.5]],33,1.0)
-walker([[20.5,-10],[20.5,12]],34,1.1)
 /* Lichterketten & Außenbeleuchtung — romantisch bei Nacht */
 const bulbGeo=new THREE.SphereGeometry(.05,10,8)
 const bulbMat=new THREE.MeshStandardMaterial({color:'#fff1cf',emissive:0xffd9a0,emissiveIntensity:.06,roughness:.4})
@@ -1626,7 +1664,7 @@ const fallLeaves=(()=>{ const c=sceneConfig.particles.leaves
 const _lm4=new THREE.Matrix4(), _lq=new THREE.Quaternion(), _le=new THREE.Euler(), _lv=new THREE.Vector3(), _ls=new THREE.Vector3(1,1,1)
 /* Oszillator-Verhältnisse (0.43/0.61/0.37 …) sind strukturelle Bewegungs-DNA — inkommensurabel,
    damit nichts sichtbar loopt. Tempo/Amplitude kommen aus sceneConfig.particles. */
-function updateLife(t,dt){
+function updateLife(t){
   peopleGroup.visible=buildingGroup.visible
   if(fireflies.p.visible){ const a=fireflies.attr.array, ts=t*fireflies.speed
     for(let i=0;i<fireflies.ph.length;i++){ const p2=fireflies.ph[i]
@@ -1640,7 +1678,7 @@ function updateLife(t,dt){
       a[i*3+1]=motes.base[i*3+1]+Math.sin(ts*.11+p2)*motes.drift*.6
       a[i*3+2]=motes.base[i*3+2]+Math.cos(ts*.13+p2*2.3)*motes.drift }
     motes.attr.needsUpdate=true }
-  /* Figuren: Atmen/Kopfdrift überall; Tippen im Sitzen; Geste im Gespräch; echter Gangzyklus */
+  /* Figuren: Atmen/Kopfdrift überall; Tippen im Sitzen; Geste im Gespräch */
   for(let i=0;i<FIGURES.length;i++){ const e=FIGURES[i]; if(e.dead) continue
     const B=e.F.B
     B.torso.rotation.x=(B.torso.userData.rx0||0)+Math.sin(t*.9+e.ph)*.012      // Atmen
@@ -1651,21 +1689,6 @@ function updateLife(t,dt){
     else if(e.mode==='talk'){ B.torso.rotation.z=Math.sin(t*.4+e.ph)*.012
       B.elR.rotation.x=Math.sin(t*.23+e.ph)>.82?-.95+Math.sin(t*3.1+e.ph)*.22:-.45 } // gelegentliche Geste
     else if(e.mode==='stand'){ B.torso.rotation.z=-(e.F.s%2?1:-1)*.02+Math.sin(t*.4+e.ph)*.01 }
-    else if(e.mode==='walk'){
-      e.d=(e.d+e.speed*dt)%e.len2
-      let d=e.d<e.len?e.d:e.len2-e.d, k=0
-      while(k<e.segLen.length-1&&d>e.segLen[k]){ d-=e.segLen[k]; k++ }
-      const a=e.path[k], b=e.path[k+1], tt=Math.min(1,d/e.segLen[k]), fw=e.d<e.len?1:-1
-      e.F.root.position.set(a[0]+(b[0]-a[0])*tt,0,a[1]+(b[1]-a[1])*tt)
-      e.F.root.rotation.y=Math.atan2((b[0]-a[0])*fw,(b[1]-a[1])*fw)
-      const wt=t*6.6*e.speed+e.ph, sL=Math.sin(wt), sR=-sL
-      B.hipL.rotation.x=-.5*sL; B.hipR.rotation.x=-.5*sR                        // Beine wechseln
-      B.knL.rotation.x=.58*Math.max(0,Math.sin(wt+2.4))+.06                     // Knie beugt in der Schwungphase
-      B.knR.rotation.x=.58*Math.max(0,Math.sin(wt+Math.PI+2.4))+.06
-      B.anL.rotation.x=.28*Math.max(0,-sL); B.anR.rotation.x=.28*Math.max(0,-sR)
-      B.shL.rotation.x=.25*sR; B.shR.rotation.x=.25*sL                          // Arme im Gegentakt
-      B.elL.rotation.x=-.25-.1*Math.max(0,sR); B.elR.rotation.x=-.25-.1*Math.max(0,sL)
-      B.pelvis.position.y=.86+.02*Math.abs(Math.cos(wt)) }                      // Körper hebt sich pro Schritt
   }
   { const c=fallLeaves.cfg
     for(let i=0;i<c.count;i++){ const k=((t+fallLeaves.off[i])%c.fallTime)/c.fallTime
@@ -2584,8 +2607,9 @@ function applyMode(){ const night=state.mode==='nacht'
   stLampMat.emissiveIntensity=mc.streetLamp.emissive
   fireflies.p.visible=night; motes.p.visible=!night
   if(bloomPass){ bloomPass.strength=mc.bloom.strength; bloomPass.radius=mc.bloom.radius; bloomPass.threshold=mc.bloom.threshold }
-  waterMat.color.set(mc.water.color); waterMat.envMapIntensity=mc.water.envMapIntensity
-  waterMat.normalScale.setScalar(mc.water.normalScale); waterMat.roughness=mc.water.roughness
+  const wu=water.material.uniforms
+  wu.waterColor.value.set(mc.water.color); wu.sunColor.value.set(mc.water.sunColor)
+  wu.distortionScale.value=mc.water.distortion; wu.sunDirection.value.copy(SUNV)
   scene.environment=envFor(night?'nacht':'tag')
   scene.environmentIntensity=mc.envIntensity
   scene.fog.color.set(mc.fog.color); scene.fog.density=mc.fog.density }
@@ -2972,9 +2996,8 @@ renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
   if(sc===gearScene){ gears.forEach((gr,i)=>{ gr.g.rotation.z+=(i%2?-1:1)*.008*(14/gr.teeth) }) }
   if(sc===scene){
     windUniform.value=t*sceneConfig.wind.speed
-    updateLife(t,dt)
-    waterTex.offset.x=t*.05
-    waterTex.offset.y=t*.016+Math.sin(t*.6)*.02 }
+    updateLife(t)
+    water.material.uniforms.time.value=t*sceneConfig.water.flowSpeed }
   perfTick(dt) // auf ALLEN Render-Pfaden messen — auch Themenwelten/Effekte-aus müssen DPR-Stufen abwerfen können
   if(sc===scene&&composer&&state.settings.effects){ composer.render() } else { renderer.render(sc,camera) }
   updateLabels() })
@@ -3012,8 +3035,10 @@ function verifySitePlan(){
   const aP=wp(SITE.alt)
   const dShort=V.distanceTo(new THREE.Vector3(aP.x,V.y,aP.z+31)), dLong=V.distanceTo(new THREE.Vector3(aP.x-7,V.y,aP.z))
   chk('nächste Fassade zu V ist die Schmalseite', dShort<dLong, `${dShort.toFixed(1)} m < ${dLong.toFixed(1)} m`)
-  const lP=wp(SITE.lib)
-  chk('Bibliothek auf der Gegenseite (hinter V, Vorzeichenwechsel)', (lP.z-V.z)>0 && (wp(SITE.tower).z-V.z)<0, `lib z=+${lP.z.toFixed(0)}, Landmarken z<0, V z=${V.z}`)
+  const portal=new THREE.Vector3(0,0,1).applyQuaternion(SITE.alt.quaternion)
+  chk('Altgebäude-Portale zeigen nach Osten (rechte Seite von V aus)', portal.x>.9, 'Portal-Richtung x='+portal.x.toFixed(2))
+  const auP=wp(SITE.audimax)
+  chk('Audimax gegenüber dem Altgebäude-Haupteingang (östlich, achsnah)', auP.x>aP.x+12 && Math.abs(auP.z-aP.z)<8, `Audimax x=${auP.x.toFixed(0)} > Altgebäude x=${aP.x.toFixed(0)}+12, |Δz|=${Math.abs(auP.z-aP.z).toFixed(1)} m`)
   chk('Oker gegenüber der Straße (Pavillon dazwischen)', SITE.riverZ>0, `Fluss z≈+${SITE.riverZ}, Via Dentis z≈-22.5`)
   return out }
 /* Einziger 3D-Tuning-Handle: Werte in .config ändern, dann .applyMode() — ersetzt die alten window.__*-Streuungen */

@@ -137,8 +137,14 @@ strengths, leaf translucency).
 | 16 | 60 fps on mid-range laptops — verification limit | **Gap, recorded:** this sandbox only has SwiftShader software GL (~1 fps), so real-GPU fps could not be measured in-session | Mitigated with measured draw-call accounting (high ≈5.4k calls, low ≈2.7k), adaptive tiers, frozen matrices, zero per-frame allocations |
 | 17 | Fog implemented in Phase A instead of B | applyMode/config rewrite owns those lines | Avoids double-editing the same region; phase split is priority order, not a wall |
 | 18 | Theme-world scenes (globe/avatar/docs/…) | Untouched except shared renderer exposure differences | They are stylized UI backdrops, not the photoreal campus; kept minimal-risk |
+| 19 | „Haupteingang an der rechten Seite" — rechts von wo? | Vom kanonischen Eingangsblick V (App-Standard, Assertions-Blickpunkt): rechts = Osten → Altgebäude ry=+90°, Portale/Risalit/Freitreppe nach Osten | V ist der einzige im Projekt definierte Referenzblick; Assertion „Portale nach Osten" machinell prüfbar |
+| 20 | Nutzer nennt den weißen Modernebau „Audimax" und will ihn gegenüber dem Altgebäude-Eingang — Konflikt mit der früheren bindenden Ordnung „Bibliothek auf der Gegenseite" | Neuere Nutzeranweisung ersetzt die alte: Bau nach (47,−60) verlegt, `SITE.lib`→`SITE.audimax`, Assertion 6 ersetzt durch Portal-Richtung + „Audimax östlich, achsnah" | Konfliktreihenfolge Korrektheit > Treue; die jüngste explizite Anweisung ist der gültige Vertrag (deckt sich mit der realen Lage am Forumsplatz) |
+| 21 | „Echtes Wasser": Reflexions-Rendering kostet einen zweiten Szenen-Render | three/addons `Water` (planare Echtzeit-Spiegelung), 512er-Target, Update nur jedes 2. Frame (`sceneConfig.water.reflectEveryN`), in `AO_EXCLUDE` gegen Override-Material-Leaks im GTAO-Pass | Gemessen: amortisiert +301 Draw Calls/Frame (Spiegelpass ≈600 Calls dank Frustum-Culling) — vertretbar für den größten Realismusgewinn am Fluss |
+| 22 | Reflector spiegelte an einer senkrechten Ebene (Ribbon-Geometrie lag in XZ) | Eigener XY-Ribbon + Mesh-Kippung um −90° wie bei PlaneGeometry | Reflector leitet die Spiegelebene aus der Mesh-Rotation ab (Geometrie-Konvention: Normale +Z) |
+| 23 | `waternormals.jpg` vom CDN lud nie (npm-Paket von three enthält `examples/textures/` nicht — vorbestehend) | Prozedurale, kachelbare Wellen-Normalmap aus Sinus-Oktaven (CanvasTexture) | Null Payload, funktioniert offline und im Sandbox-Harness; entfernt eine tote Remote-Abhängigkeit |
+| 24 | „Töpfe für alle Bäume" auch auf Rasen/Ufer? | Ja — `treePit(x,z,s)` wird in `tree()` selbst aufgerufen, Kantenmaß skaliert mit Baumgröße | Explizite Nutzeranweisung („für alle Bäume"); einheitlicher urbaner Look |
 
-**Dependencies added: none.** (Only `three/addons` modules from the already-used three@0.169.0 CDN package: `Sky`, `GTAOPass`, `ShaderPass`, `VignetteShader`.)
+**Dependencies added: none.** (Only `three/addons` modules from the already-used three@0.169.0 CDN package: `Sky`, `GTAOPass`, `ShaderPass`, `VignetteShader`, `Water`.)
 
 ---
 
@@ -264,7 +270,41 @@ EIN Stilisierungslevel und erfüllt Anatomie-/Posen-Spezifikation vollständig.
 14/14 Interaktionstests, 0 Konsolen-Fehler. Echte 60-fps-Validierung weiterhin nur auf realer
 GPU möglich (dokumentierte Umgebungsgrenze).
 
-## 10. Files touched
+## 10. Site-Korrekturen v2 + Asset-Korrekturen (Nutzerfeedback 3, Change Log)
+
+Nutzeranweisungen (Foto „3 Via Dentis" + App-Screenshot) und Umsetzung:
+
+- **Turm halb so breit:** Scheibe 16×52×13 → **8×52×11**; Fassade pro Breite eigene Bay-Zahl
+  (Material-Array: Schmalseite 4, Breitseite 6 Bays à ~2 m — Fenster verzerren nicht mehr);
+  Dachvordach/Technikaufbau mitskaliert.
+- **Parkplatz zwischen Studierendenhaus und Altgebäude, ohne Autos:** 16×23-m-Asphaltfeld
+  (3,−38.4) mit 2×9 markierten Stellflächen (instanziert, 1 Draw Call), Einfahrt von der
+  Via Dentis, Heckenfassung West + Süd; `car()`-Funktion + alle 6 Autos entfernt.
+- **Tür des Studierendenhauses** vom Nordglas zur **Südfassade** verlegt (gegenüber dem
+  Parkplatz); Nordseite bleibt Terrassenausgang ohne Portalrahmen.
+- **Altgebäude-Haupteingang rechts (Ost):** ry −90° → **+90°** — Portale/Risalit/Freitreppe/
+  Laternen zeigen nach Osten, die Westfassade grenzt an den Parkplatz (wie im Nutzerfoto).
+- **Audimax statt Bibliothek am Fluss:** weißer Modernebau nach **(47,−60)** gegenüber dem
+  Altgebäude-Haupteingang; Kolonnadenfront nach Westen, gefliester Vorplatz (12×26 m) dazwischen.
+- **Autoweg → Fahrradstraße mit Fliesen:** Asphaltfahrbahn + Mittellinien-Dashes entfernt;
+  3.6-m-Klinkerweg (paverMat) mit Kantstein, Fahrrad-Piktogramme bleiben, Lampen bleiben als
+  Wegbeleuchtung; Gras-Ausschluss achsparallel nachgezogen, Bank von der Trasse an den Rand.
+- **Keine gehenden Menschen:** `walker()` + 5 Pfade + Gangzyklus-Zweig in `updateLife`
+  restlos entfernt (kein toter Code); Gesprächsgruppe vom Parkplatzmund auf den Plaza-Kopf.
+- **Baumscheiben für alle Bäume:** `treePit(x,z,s)` in `tree()` integriert (Kante 1.1+0.45·s),
+  auch Ufer- und Rasenbäume; separate Pit-Liste entfernt.
+- **Echte Blätter:** Laubtextur v2 512 px — einzelne Blattspreiten (Spitze, Mittelrippe,
+  5 Grüntöne) statt Ellipsen-Rauschen; wirkt auf Baumkronen, Sträucher und Hecken-Blattdecke.
+- **Echtes Wasser:** three/addons `Water` mit planarer Echtzeit-Spiegelung (Ufer, Steg, Bäume,
+  Nachtlichter spiegeln wirklich), prozedurale kachelbare Wellen-Normalmap, Tag/Nacht-Presets
+  (`modes.*.water`), Drosselung + AO-Ausschluss (Details Decision Log 21–23).
+
+**Assertions (Headless-Lauf, verbatim):** 8/8 PASS — Ordnung links→rechts, Turm-Distanz,
+Betweenness, Langachse, Schmalseite, **Portale nach Osten**, **Audimax gegenüber (achsnah)**,
+Oker-Seite. **Messung:** high-Tier 6 413 Draw Calls / 1,76 M Dreiecke (amortisiert +301 Calls
+durch den gedrosselten Spiegelpass), low-Tier 3 588; 14/14 Interaktionstests, 0 Konsolen-Fehler.
+
+## 11. Files touched
 
 - `index.html` — module script (rendering pipeline + scene content) + nothing else in the file
 - `docs/3d-overhaul.md` — this document
