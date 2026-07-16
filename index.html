@@ -245,6 +245,7 @@ const sceneConfig = {
     normalBias: .025,          // pushes samples along normals — fixes stripes on thin steel profiles
   },
   sun: { distance: 90 },       // world distance of the directional light along its direction
+  moon: { distance: 420 },     // world distance of the visible moon disc along the night key direction
   skyDome: { radius: 760 },    // visible sky sphere scale — inside camera.far, outside city backdrop
   stars: { size: 1.3, opacity: .9 }, // night star points — subtle, like the sparse stars of photo 1
   materials: {
@@ -255,11 +256,15 @@ const sceneConfig = {
       concrete: .55, carpetGF: .35, carpetOG: .35, ribRoof: 1.0, ribCeil: .8,
       woodCeil: .6, curtain: .45, lamp: .4, partition: .5, white: .7,
       grass: .5, paver: .6, gravel: .5, tower: .6, block: .55, table: .8, chair: .7,
+      leaf: .35, bark: .4,     // foliage IBL response — low, leaves/bark are matte
     },
     leafBackfaceBoost: [1.22, 1.3, 1.08], // fake translucency: backlit leaves brighten slightly green-warm
     normalScale: {             // strength of the procedurally generated normal maps
       paver: .55, bark: .9, woodCeil: .4, grass: .45, carpet: .3, asphalt: .5,
     },
+    macroVariation: { grass: .11, paver: .07 }, // world-space macro brightness variation that breaks texture tiling
+    asphaltRoughness: .9,      // base street roughness; the noise roughnessMap pulls it toward a damp sheen (July photo)
+    autumnPalette: ['#c8a04a','#b4763a','#8a5a2e','#d9b45c','#a06a34'], // shared by ground leaf litter + falling leaves
   },
   wind: {                      // global foliage wind (vertex shader, per-instance phase)
     speed: .55,                // slow gusts — fast wind reads as fake
@@ -268,9 +273,9 @@ const sceneConfig = {
     hedgeStrength: .04,        // hedges barely move
   },
   particles: {                 // Gesamtbudget < 200 Instanzen (Brief) — aktuell 140
-    fireflies: { count:56, size:.09, color:'#ffd27a', opacity:.85, drift:1.1 }, // nachts an Hecken/Bäumen (Foto-1-Stimmung)
-    motes:     { count:48, size:.05, color:'#fff6e0', opacity:.14, drift:.4 },  // Staub im Tageslicht der Halle (Fotos 2/3)
-    leaves:    { count:36, fallHeight:6.5, fallTime:11, flutter:.9 },           // einzelne fallende Blätter unter den Parkbäumen (Herbstfotos)
+    fireflies: { count:56, size:.09, color:'#ffd27a', opacity:.85, drift:1.1, rise:.5, speed:1 }, // nachts an Hecken/Bäumen; drift/rise m, speed = Tempo-Multiplikator
+    motes:     { count:48, size:.05, color:'#fff6e0', opacity:.14, drift:.4, speed:1 },  // Staub im Tageslicht der Halle (Fotos 2/3)
+    leaves:    { count:36, size:[.16,.11], fallHeight:6.5, fallTime:11, flutter:.9 },    // einzelne fallende Blätter unter den Parkbäumen (Herbstfotos)
   },
   ao: {                        // GTAO — grounds furniture/columns; biggest "sits on the floor" win
     radius: .5,                // occlusion search radius (m) — room-scale contact darkening
@@ -363,7 +368,7 @@ function envFor(modeKey){
   const gnd = new THREE.Mesh(new THREE.CircleGeometry(150, 24).rotateX(-Math.PI/2), new THREE.MeshBasicMaterial({ color: mc.groundBounce }))
   gnd.position.y = -2; es.add(gnd)
   envCache[modeKey] = pmrem.fromScene(es, .04).texture
-  gnd.geometry.dispose(); gnd.material.dispose()
+  gnd.geometry.dispose(); gnd.material.dispose(); esky.geometry.dispose(); esky.material.dispose()
   return envCache[modeKey] }
 const camera = new THREE.PerspectiveCamera(sceneConfig.camera.fov, (innerWidth-264)/(innerHeight-64), sceneConfig.camera.near, sceneConfig.camera.far)
 const controls = new OrbitControls(camera, renderer.domElement)
@@ -373,9 +378,11 @@ controls.minDistance = 3; controls.maxDistance = 110; controls.maxPolarAngle = M
 controls.rotateSpeed = .92; controls.zoomSpeed = 1.15
 controls.addEventListener('start', () => controls.autoRotate = false)
 
-/* ===== Licht: geschichtet — Sonne (Schatten), Himmels-Bounce, IBL ===== */
-const hemi=new THREE.HemisphereLight(0xcfe4ff, 0xb3a98f, .42); scene.add(hemi)
-const sun = new THREE.DirectionalLight(0xffffff, 2.6)
+/* ===== Licht: geschichtet — Sonne (Schatten), Himmels-Bounce, IBL.
+   Konstruktion direkt aus dem Tag-Preset; applyMode() hält die Werte danach synchron. ===== */
+const TAG=sceneConfig.modes.tag
+const hemi=new THREE.HemisphereLight(TAG.hemi.sky, TAG.hemi.ground, TAG.hemi.intensity); scene.add(hemi)
+const sun = new THREE.DirectionalLight(TAG.sun.color, TAG.sun.intensity)
 sun.castShadow = true
 sun.shadow.mapSize.set(sceneConfig.quality[qualityTier].shadowMap, sceneConfig.quality[qualityTier].shadowMap)
 sun.shadow.bias = sceneConfig.shadow.bias; sun.shadow.normalBias = sceneConfig.shadow.normalBias
@@ -383,9 +390,9 @@ sun.shadow.bias = sceneConfig.shadow.bias; sun.shadow.normalBias = sceneConfig.s
   Object.assign(sun.shadow.camera, { left: -f, right: f, top: f, bottom: -f, far: sceneConfig.shadow.far })
   sun.shadow.camera.updateProjectionMatrix() } // ohne dies bleibt der Ortho-Frustum beim ±5-m-Default → keine Schatten
 scene.add(sun)
-const fill = new THREE.DirectionalLight(0xdfe9f4, .18); fill.position.set(-34, 24, -26); scene.add(fill)
-const warm1 = new THREE.PointLight(0xfff2d9, 4, 28, 2); warm1.position.set(0, 2.9, 0); scene.add(warm1)
-const warm2 = new THREE.PointLight(0xfff2d9, 4, 28, 2); warm2.position.set(0, 6.4, 0); scene.add(warm2)
+const fill = new THREE.DirectionalLight(TAG.fill.color, TAG.fill.intensity); fill.position.set(-34, 24, -26); scene.add(fill)
+const warm1 = new THREE.PointLight(0xfff2d9, TAG.warmPoints, 28, 2); warm1.position.set(0, 2.9, 0); scene.add(warm1)
+const warm2 = new THREE.PointLight(0xfff2d9, TAG.warmPoints, 28, 2); warm2.position.set(0, 6.4, 0); scene.add(warm2)
 
 
 const buildingGroup=new THREE.Group(); scene.add(buildingGroup)
@@ -525,6 +532,9 @@ function foliageShader(mat,{wind=0,weight='unit',translucency=false}={}){
       sh.fragmentShader=sh.fragmentShader.replace('#include <color_fragment>',
         `#include <color_fragment>\n\tif(!gl_FrontFacing) diffuseColor.rgb *= vec3(${b[0]},${b[1]},${b[2]});`) }
   }
+  /* three cached Programme nach onBeforeCompile.toString() — bei gleichem Quelltext mit anderen
+     Konstanten kollidieren sie. Eigener Cache-Key pro Parameterkombination verhindert das. */
+  mat.customProgramCacheKey=()=>`foliage|${wind}|${weight}|${translucency}`
   return mat }
 /* Makro-Noise gegen sichtbares Kacheln: großskalige Helligkeitsvariation in Weltkoordinaten */
 function antiTiling(mat,amount){
@@ -539,8 +549,9 @@ function antiTiling(mat,amount){
 \t             + .5*sin(vMacroW.x*.023-vMacroW.y*.031);
 \tdiffuseColor.rgb *= 1.0 + macroN*${amount.toFixed(3)};`)
   }
+  mat.customProgramCacheKey=()=>`macro|${amount}` // eigener Key: sonst teilen sich Rasen/Pflaster ein Programm
   return mat }
-antiTiling(M.grass,.11); antiTiling(M.paver,.07)
+antiTiling(M.grass,sceneConfig.materials.macroVariation.grass); antiTiling(M.paver,sceneConfig.materials.macroVariation.paver)
 const B=(w,h,d,mat,x,y,z,ry=0,cast=true,recv=false)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); m.rotation.y=ry; m.castShadow=cast; m.receiveShadow=recv; buildingGroup.add(m); return m }
 function instanced(geo,mat,items,cast=true){ const im=new THREE.InstancedMesh(geo,mat,items.length)
   const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), e=new THREE.Euler(), sv=new THREE.Vector3()
@@ -793,7 +804,7 @@ instanced(new THREE.CylinderGeometry(.05,.055,.84,10),new THREE.MeshStandardMate
   bench(8,17.6,0); bench(-8,17.6,0); bench(-2,-17.6,Math.PI); bench(21.3,6,Math.PI/2) }
 /* Pockelsstraße: Asphalt (Noise-Albedo + Relief + Roughness-Variation → leicht feuchter Look wie im Juli-Foto) */
 const asphaltT=noiseTex('#7e7f85',['#6f7076','#8b8c92','#75767c'],4200); asphaltT.repeat.set(3,24)
-const asphaltMat=new THREE.MeshStandardMaterial({color:'#eceded',map:asphaltT,roughness:.9,
+const asphaltMat=new THREE.MeshStandardMaterial({color:'#eceded',map:asphaltT,roughness:sceneConfig.materials.asphaltRoughness,
   normalMap:normalFromTex(asphaltT,NS.asphalt),roughnessMap:asphaltT})
 const street=new THREE.Mesh(new THREE.PlaneGeometry(6.4,76),asphaltMat)
 street.rotation.x=-Math.PI/2; street.position.set(27,.012,0); street.receiveShadow=true; buildingGroup.add(street)
@@ -833,7 +844,7 @@ function leafTexture(){ const s=256,c=cvs(s),x=c.getContext('2d'); x.clearRect(0
 const LEAF_TEX=leafTexture()
 const LEAF_DEPTH=new THREE.MeshDepthMaterial({ depthPacking:THREE.RGBADepthPacking, map:LEAF_TEX, alphaTest:.35 })
 const BARK_TEX=barkTexture()
-const BARK=new THREE.MeshStandardMaterial({ map:BARK_TEX, roughness:1, normalMap:normalFromTex(BARK_TEX,NS.bark), envMapIntensity:.4 })
+const BARK=new THREE.MeshStandardMaterial({ map:BARK_TEX, roughness:1, normalMap:normalFromTex(BARK_TEX,NS.bark), envMapIntensity:sceneConfig.materials.envMapIntensity.bark })
 const quadGeo=new THREE.PlaneGeometry(1,1)
 const branchGeo=new THREE.CylinderGeometry(.62,1,1,8); branchGeo.translate(0,.5,0)
 function tree(x,z,s,seed){
@@ -860,7 +871,7 @@ function tree(x,z,s,seed){
   bm.castShadow=true; bm.instanceMatrix.needsUpdate=true; bm.frustumCulled=false; g.add(bm)
   /* Laubbueschel sitzen an jeder Zweigspitze — nichts sticht mehr heraus */
   const tint=new THREE.Color().setHSL(.27+rnd()*.04,.3+rnd()*.1,.28+rnd()*.07)
-  const lm=foliageShader(new THREE.MeshStandardMaterial({ map:LEAF_TEX, alphaTest:.35, side:THREE.DoubleSide, roughness:1, color:tint, envMapIntensity:.35 }),
+  const lm=foliageShader(new THREE.MeshStandardMaterial({ map:LEAF_TEX, alphaTest:.35, side:THREE.DoubleSide, roughness:1, color:tint, envMapIntensity:sceneConfig.materials.envMapIntensity.leaf }),
     { wind:sceneConfig.wind.leafStrength, translucency:true })
   const n=tips.length*4+6
   const im=new THREE.InstancedMesh(quadGeo,lm,n)
@@ -887,7 +898,7 @@ function tree(x,z,s,seed){
   [-31,-6,1.9,2],[-31,14,1.6,3],[35,-2,1.5,4],[34,-22,1.6,5],[-33,3,1.5,6],[2,24,1.5,7],[-14,-24,1.6,8],[12,-25,1.8,9],[33.5,-14,1.8,10],[-29,-19,1.7,11],[34,16,1.7,12],[6,27,1.5,13],[-22,9,1.9,14],[33,8,1.6,15]].forEach(a=>tree(...a))
 /* Falllaub unter den Bäumen — wie auf den Herbstfotos */
 { const LIT=[[-21.5,20],[20,-20.5],[10,21.8],[-22,-19.5],[-27.5,5],[16.9,22],[-31,-6],[-14,-24],[12,-25],[-22,9]]
-  const cols=['#c8a04a','#b4763a','#8a5a2e','#d9b45c','#a06a34']
+  const cols=sceneConfig.materials.autumnPalette
   const geo=new THREE.PlaneGeometry(.17,.12), n=LIT.length*150
   const mat=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:1,side:THREE.DoubleSide})
   const im=new THREE.InstancedMesh(geo,mat,n)
@@ -955,7 +966,7 @@ function bladeTexture(){ const s=128,c=cvs(s),x=c.getContext('2d'); x.clearRect(
 }
 /* Straeucher / Unterwuchs */
 function shrub(x,z,s){ const g=new THREE.Group(); g.position.set(x,0,z)
-  const lm=foliageShader(new THREE.MeshStandardMaterial({ map:LEAF_TEX, alphaTest:.45, side:THREE.DoubleSide, roughness:1, color:new THREE.Color().setHSL(.26+Math.random()*.06,.3,.3+Math.random()*.08), envMapIntensity:.35 }),
+  const lm=foliageShader(new THREE.MeshStandardMaterial({ map:LEAF_TEX, alphaTest:.45, side:THREE.DoubleSide, roughness:1, color:new THREE.Color().setHSL(.26+Math.random()*.06,.3,.3+Math.random()*.08), envMapIntensity:sceneConfig.materials.envMapIntensity.leaf }),
     { wind:sceneConfig.wind.leafStrength*.7, translucency:true })
   const n=14, im=new THREE.InstancedMesh(quadGeo,lm,n)
   const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), e=new THREE.Euler(), sv=new THREE.Vector3()
@@ -1285,7 +1296,7 @@ const fireflies=(()=>{ const c=sceneConfig.particles.fireflies
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3))
   const p=new THREE.Points(g,new THREE.PointsMaterial({color:c.color,size:c.size,transparent:true,opacity:c.opacity,blending:THREE.AdditiveBlending,depthWrite:false}))
   p.visible=false; p.frustumCulled=false; buildingGroup.add(p)
-  return {p,base,ph,attr:g.attributes.position,drift:c.drift} })()
+  return {p,base,ph,attr:g.attributes.position,drift:c.drift,rise:c.rise,speed:c.speed} })()
 const motes=(()=>{ const c=sceneConfig.particles.motes
   const pos=new Float32Array(c.count*3), base=new Float32Array(c.count*3), ph=new Float32Array(c.count)
   for(let i=0;i<c.count;i++){ const og=i%2
@@ -1295,12 +1306,12 @@ const motes=(()=>{ const c=sceneConfig.particles.motes
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3))
   const p=new THREE.Points(g,new THREE.PointsMaterial({color:c.color,size:c.size,transparent:true,opacity:c.opacity,blending:THREE.AdditiveBlending,depthWrite:false}))
   p.frustumCulled=false; buildingGroup.add(p)
-  return {p,base,ph,attr:g.attributes.position,drift:c.drift} })()
+  return {p,base,ph,attr:g.attributes.position,drift:c.drift,speed:c.speed} })()
 const fallLeaves=(()=>{ const c=sceneConfig.particles.leaves
   const TREES=[[-21.5,20],[20,-20.5],[10,21.8],[-22,-19.5],[-27.5,5],[16.9,22]]
-  const geo=new THREE.PlaneGeometry(.16,.11)
-  const im=new THREE.InstancedMesh(geo,new THREE.MeshStandardMaterial({color:'#ffffff',roughness:1,side:THREE.DoubleSide}),c.count)
-  const cols=['#c8a04a','#b4763a','#8a5a2e','#d9b45c','#a06a34'], cl=new THREE.Color()
+  const geo=new THREE.PlaneGeometry(c.size[0],c.size[1])
+  const im=new THREE.InstancedMesh(geo,new THREE.MeshStandardMaterial({color:'#f5f5f2',roughness:1,side:THREE.DoubleSide}),c.count)
+  const cols=sceneConfig.materials.autumnPalette, cl=new THREE.Color()
   const home=new Float32Array(c.count*2), off=new Float32Array(c.count)
   for(let i=0;i<c.count;i++){ const tr=TREES[i%TREES.length]
     home[i*2]=tr[0]+(Math.random()-.5)*5; home[i*2+1]=tr[1]+(Math.random()-.5)*5
@@ -1310,18 +1321,20 @@ const fallLeaves=(()=>{ const c=sceneConfig.particles.leaves
   im.frustumCulled=false; im.castShadow=false; buildingGroup.add(im)
   return {im,home,off,cfg:c} })()
 const _lm4=new THREE.Matrix4(), _lq=new THREE.Quaternion(), _le=new THREE.Euler(), _lv=new THREE.Vector3(), _ls=new THREE.Vector3(1,1,1)
+/* Oszillator-Verhältnisse (0.43/0.61/0.37 …) sind strukturelle Bewegungs-DNA — inkommensurabel,
+   damit nichts sichtbar loopt. Tempo/Amplitude kommen aus sceneConfig.particles. */
 function updateLife(t){
-  if(fireflies.p.visible){ const a=fireflies.attr.array
+  if(fireflies.p.visible){ const a=fireflies.attr.array, ts=t*fireflies.speed
     for(let i=0;i<fireflies.ph.length;i++){ const p2=fireflies.ph[i]
-      a[i*3]  =fireflies.base[i*3]  +Math.sin(t*.43+p2*2.1)*fireflies.drift
-      a[i*3+1]=fireflies.base[i*3+1]+Math.sin(t*.61+p2)*.5
-      a[i*3+2]=fireflies.base[i*3+2]+Math.cos(t*.37+p2*1.7)*fireflies.drift }
+      a[i*3]  =fireflies.base[i*3]  +Math.sin(ts*.43+p2*2.1)*fireflies.drift
+      a[i*3+1]=fireflies.base[i*3+1]+Math.sin(ts*.61+p2)*fireflies.rise
+      a[i*3+2]=fireflies.base[i*3+2]+Math.cos(ts*.37+p2*1.7)*fireflies.drift }
     fireflies.attr.needsUpdate=true }
-  if(motes.p.visible){ const a=motes.attr.array
+  if(motes.p.visible){ const a=motes.attr.array, ts=t*motes.speed
     for(let i=0;i<motes.ph.length;i++){ const p2=motes.ph[i]
-      a[i*3]  =motes.base[i*3]  +Math.sin(t*.16+p2*3.1)*motes.drift
-      a[i*3+1]=motes.base[i*3+1]+Math.sin(t*.11+p2)*motes.drift*.6
-      a[i*3+2]=motes.base[i*3+2]+Math.cos(t*.13+p2*2.3)*motes.drift }
+      a[i*3]  =motes.base[i*3]  +Math.sin(ts*.16+p2*3.1)*motes.drift
+      a[i*3+1]=motes.base[i*3+1]+Math.sin(ts*.11+p2)*motes.drift*.6
+      a[i*3+2]=motes.base[i*3+2]+Math.cos(ts*.13+p2*2.3)*motes.drift }
     motes.attr.needsUpdate=true }
   { const c=fallLeaves.cfg
     for(let i=0;i<c.count;i++){ const k=((t+fallLeaves.off[i])%c.fallTime)/c.fallTime
@@ -1333,7 +1346,7 @@ function updateLife(t){
 }
 
 /* ===== Postprocessing: Render → GTAO → Bloom → Output(ACES/sRGB) → Vignette ===== */
-let composer=null, bloomPass=null, gtaoPass=null, vignettePass=null
+let composer=null, bloomPass=null, gtaoPass=null
 try {
   const vw=innerWidth-264, vh=innerHeight-64
   /* MSAA auf dem Composer-Target: Geometriekanten bleiben glatt trotz Post-Kette (WebGL2) */
@@ -1346,7 +1359,7 @@ try {
   bloomPass=new UnrealBloomPass(new THREE.Vector2(vw,vh),sceneConfig.modes.tag.bloom.strength,sceneConfig.modes.tag.bloom.radius,sceneConfig.modes.tag.bloom.threshold)
   composer.addPass(bloomPass)
   composer.addPass(new OutputPass())
-  vignettePass=new ShaderPass(VignetteShader)
+  const vignettePass=new ShaderPass(VignetteShader)
   vignettePass.uniforms.offset.value=sceneConfig.vignette.offset
   vignettePass.uniforms.darkness.value=sceneConfig.vignette.darkness
   composer.addPass(vignettePass)
@@ -1355,15 +1368,18 @@ try {
 
 /* ===== Adaptive Qualität: DPR, Schattenauflösung und AO folgen der realen Framerate ===== */
 function applyAoSize(){ if(!composer||!gtaoPass||!gtaoPass.enabled) return
-  const q=sceneConfig.quality[qualityTier]
-  /* Halbauflösung: AO ist niederfrequent — optisch kaum Verlust, halbe Füllrate */
-  if(q.aoHalfRes) gtaoPass.setSize(Math.ceil((innerWidth-264)/2),Math.ceil((innerHeight-64)/2)) }
+  const q=sceneConfig.quality[qualityTier], pr=renderer.getPixelRatio()
+  /* Halbauflösung (in effektiven Pixeln): AO ist niederfrequent — optisch kaum Verlust, halbe Füllrate */
+  if(q.aoHalfRes) gtaoPass.setSize(Math.ceil((innerWidth-264)*pr/2),Math.ceil((innerHeight-64)*pr/2)) }
 function setQualityTier(tier){ if(!sceneConfig.quality[tier]) return
   qualityTier=tier
   const q=sceneConfig.quality[tier]
-  renderer.setPixelRatio(Math.min(devicePixelRatio,q.pixelRatio,sceneConfig.renderer.maxPixelRatio))
+  const pr=Math.min(devicePixelRatio,q.pixelRatio,sceneConfig.renderer.maxPixelRatio)
+  renderer.setPixelRatio(pr)
   renderer.setSize(innerWidth-264,innerHeight-64)
-  if(composer) composer.setSize(innerWidth-264,innerHeight-64)
+  /* Composer cached seine PixelRatio (bei eigenem RenderTarget = 1) — ohne setPixelRatio
+     rendert die Post-Kette in CSS-Pixeln und die DPR-Stufe wäre wirkungslos */
+  if(composer){ composer.setPixelRatio(pr); composer.setSize(innerWidth-264,innerHeight-64) }
   if(sun.shadow.mapSize.x!==q.shadowMap){ sun.shadow.mapSize.set(q.shadowMap,q.shadowMap)
     if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null } }
   if(gtaoPass) gtaoPass.enabled=q.ao
@@ -1372,6 +1388,7 @@ setQualityTier(qualityTier)
 /* FPS-Monitor: schnell abstufen, träge heraufstufen; Ceiling verhindert Ping-Pong */
 const perfMon={ frames:0, tSum:0, good:0, sinceRaise:99, ceiling:2, order:['low','medium','high'] }
 function perfTick(dt){ const q=sceneConfig.quality
+  if(dt>.5) return // Tab war im Hintergrund (rAF pausiert) — Ausreißer-Frame nicht werten
   perfMon.frames++; perfMon.tSum+=dt; if(perfMon.tSum<q.windowSec) return
   const fps=perfMon.frames/perfMon.tSum
   perfMon.frames=0; perfMon.tSum=0; perfMon.sinceRaise++
@@ -2209,7 +2226,7 @@ function applyMode(){ const night=state.mode==='nacht'
   dirFromAngles(mc.sun.azimuthDeg,mc.sun.elevationDeg,SUNV)
   sun.position.copy(SUNV).multiplyScalar(sceneConfig.sun.distance)
   sun.intensity=mc.sun.intensity; sun.color.set(mc.sun.color)
-  moonMesh.position.copy(SUNV).multiplyScalar(420)
+  moonMesh.position.copy(SUNV).multiplyScalar(sceneConfig.moon.distance)
   const sk=mc.sky, su=skyMesh.material.uniforms
   su.turbidity.value=sk.turbidity; su.rayleigh.value=sk.rayleigh
   su.mieCoefficient.value=sk.mieCoefficient; su.mieDirectionalG.value=sk.mieG
@@ -2597,10 +2614,10 @@ let breathePrev=0, lastT=0
 renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
   const dt=t-lastT; lastT=t
   controls.update()
-  /* Kamera-"Atmen": minimale vertikale Drift als Delta — begrenzt, driftet nie weg */
-  { const b=Math.sin(t*sceneConfig.camera.breatheSpeed*Math.PI*2)*sceneConfig.camera.breatheAmp
-    camera.position.y+=b-breathePrev; breathePrev=b }
   const sc=current()
+  /* Kamera-"Atmen" nur im Campus: minimale vertikale Drift als Delta — begrenzt, driftet nie weg */
+  if(sc===scene){ const b=Math.sin(t*sceneConfig.camera.breatheSpeed*Math.PI*2)*sceneConfig.camera.breatheAmp
+    camera.position.y+=b-breathePrev; breathePrev=b }
   if(sc===ambScene) ambShapes.forEach(sh=>{ sh.position.y=sh.userData.y0+Math.sin(t*sh.userData.sp+sh.userData.ph)*.45; sh.rotation.x+=.001*sh.userData.sp*3; sh.rotation.y+=.0014*sh.userData.sp*3 })
   if(sc===globeScene){ globeGroup.rotation.y+=.0008; arcs.forEach(a=>{ const k=(t*.14+a.off)%1; a.dot.position.copy(a.curve.getPoint(k)) }) }
   if(sc===avScene){ avTurn.rotation.y+=.008; avTurn.position.y=Math.sin(t*1.4)*.012 }
