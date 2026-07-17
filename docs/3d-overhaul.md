@@ -543,6 +543,18 @@ Blöcke; Bögen mit Voussoirs+Keilstein; gelbes Haus mit Paneelfugen/Streifen/ko
 kein Extra-Draw), low-Tier 4 043; 14/14 Interaktionstests, 0 Konsolen-Fehler. Texturspeicher
 Atlas ≈ 1536×594 Albedo + abgeleitete Normal ≈ 7 MB.
 
+### 16.4 Glas-Verbindungsbrücke (Skywalk) Okerhochhaus ↔ Altgebäude
+
+Nutzerfoto: ein grün getönter, aufgeständerter Glasgang verbindet die beiden Gebäude. Maße
+real gehalten — die Gebäude bleiben weit auseinander; die Brücke überbrückt die **28.5 m-Lücke**
+zwischen B4-Ostfassade (x=−47.5) und B2-Westfassade (x=−19) bei z=−64, aufgeständert auf
+Erstgeschoss-Höhe (Deck y=5.0, Durchfahrt darunter). Aufbau: Alu-Deck + Untersicht, flaches
+Dach, je Seite grüne Brüstungsglas-Streifen + grün getönte Verglasung (MeshPhysical, transparent),
+Alu-Kämpfer/Rahmen + Pfosten alle 1.6 m, schlanke Rundstützen alle 5 m von Boden bis Deck. Die
+Verglasung ist in `AO_EXCLUDE` (GTAO kann kein transparentes Glas). **Checks:** „Brücke verbindet
+B4-Ost ↔ B2-West" PASS (x −47.5→−19), „Gebäude real weit auseinander (Spannweite ≥ 25 m)" PASS
+(28.5 m). +169 Draw Calls (high 7 368 / 1,86 M Dreiecke), 14/14 Regression, 0 Konsolen-Fehler.
+
 ## 17. Files touched
 
 - `index.html` — module script (rendering pipeline + scene content) + nothing else in the file

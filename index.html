@@ -1554,6 +1554,28 @@ bike(4.5,15.6,1.2); bike(-13.5,15.8,-1.4)
     const roof2=new THREE.Mesh(new THREE.BoxGeometry(26.6,.4,19.6),new THREE.MeshStandardMaterial({color:'#3a3f47',roughness:.7}))
     roof2.position.y=9.8; au.add(roof2) }
 }
+/* ===== Glas-Verbindungsbrücke (Skywalk) Okerhochhaus (B4) ↔ Altgebäude (B2) — Nutzerfoto =====
+   Grün getönter, aufgeständerter Glasgang. Maße real: die Gebäude bleiben weit auseinander;
+   die Brücke überbrückt die ~28.5 m Lücke zwischen B4-Ostfassade (x=−47.5) und B2-Westfassade
+   (x=−19) bei z=−64, aufgeständert auf y=5 (Erstgeschoss-Höhe, Durchfahrt darunter). */
+{ const bx0=-47.5, bx1=-19, cx=(bx0+bx1)/2, bz=-64, fy=5.0, ch=3.0, bw=3.6, len=(bx1-bx0)+1.0
+  const bg=new THREE.Group(); bg.position.set(cx,0,bz); buildingGroup.add(bg)
+  SITE.bridge={x0:bx0,x1:bx1,z:bz,y:fy}
+  const alu=new THREE.MeshStandardMaterial({color:'#e6e8ea',roughness:.4,metalness:.5})            // Alu-Rahmen weiß
+  const spandrel=new THREE.MeshStandardMaterial({color:'#8fb0a4',roughness:.25,metalness:.3})      // grüner Brüstungs-Glasstreifen
+  const glass=new THREE.MeshPhysicalMaterial({color:'#a8c6ba',roughness:.1,transparent:true,opacity:.32}) // grün getöntes Klarglas
+  const deck=new THREE.Mesh(new THREE.BoxGeometry(len,.35,bw),alu); deck.position.y=fy; deck.castShadow=true; deck.receiveShadow=true; bg.add(deck)
+  const soffit=new THREE.Mesh(new THREE.BoxGeometry(len,.12,bw+.1),new THREE.MeshStandardMaterial({color:'#c9ccce',roughness:.6})); soffit.position.y=fy-.22; bg.add(soffit)
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(len+.4,.22,bw+.5),new THREE.MeshStandardMaterial({color:'#d0d3d5',roughness:.5,metalness:.3})); roof.position.y=fy+ch+.1; roof.castShadow=true; bg.add(roof)
+  ;[-1,1].forEach(sd=>{ const zf=sd*(bw/2)
+    const sp=new THREE.Mesh(new THREE.BoxGeometry(len,1.0,.08),spandrel); sp.position.set(0,fy+.7,zf); bg.add(sp)          // grüne Brüstung
+    const gl=new THREE.Mesh(new THREE.BoxGeometry(len,1.75,.05),glass); gl.position.set(0,fy+2.05,zf); bg.add(gl); AO_EXCLUDE.push(gl) // Verglasung (aus GTAO: transparent)
+    const tr=new THREE.Mesh(new THREE.BoxGeometry(len,.1,.12),alu); tr.position.set(0,fy+1.2,zf); bg.add(tr)              // Kämpfer
+    const top=new THREE.Mesh(new THREE.BoxGeometry(len,.12,.14),alu); top.position.set(0,fy+ch-.05,zf); bg.add(top)      // Rahmen oben
+    for(let x=-len/2;x<=len/2+.01;x+=1.6){ const mu=new THREE.Mesh(new THREE.BoxGeometry(.09,ch-.2,.14),alu); mu.position.set(x,fy+ch/2+.1,zf); bg.add(mu) } }) // Pfosten
+  /* Aufständerung: schlanke Stützen von Boden bis Deck, alle ~5 m (nicht an den Gebäude-Enden) */
+  for(let x=-len/2+3;x<len/2-2;x+=5){ [-1,1].forEach(sd=>{ const col=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,fy,12),alu)
+    col.position.set(x,fy/2,sd*(bw/2-.3)); col.castShadow=true; bg.add(col) }) } }
 /* Fluss (Oker) mit Ufern und Holzsteg */
 function ribbon(w,yOff){ const segs=160
   const pos=[],uv=[],idx=[]
@@ -3141,6 +3163,10 @@ function verifySitePlan(){
   /* ---- Fix A: Voussoir-Zahl je Bogen (Datenblatt 13 EG / 11 OG) ---- */
   let vEG=0,vOG=0; SITE.alt.traverse(o=>{ if(o.userData.vou===13)vEG++; if(o.userData.vou===11)vOG++ })
   chk('Altgebäude-Bögen aus radialen Voussoirs (13 EG / 11 OG, 7 Achsen)', SITE.altVouEG===13&&SITE.altVouOG===11&&vEG===7&&vOG===7, `EG ${SITE.altVouEG}×${vEG/7|0}?, ${vEG} EG-Bögen / ${vOG} OG-Bögen à ${SITE.altVouEG}/${SITE.altVouOG}`)
+  /* ---- Glas-Verbindungsbrücke: verbindet B4-Ostfassade ↔ B2-Westfassade, Gebäude bleiben weit ---- */
+  const brg=SITE.bridge, b4East=b4.x+7.5, b2West=wp(SITE.alt).x-SITE.altW/2
+  chk('Glasbrücke verbindet Okerhochhaus (Ost) ↔ Altgebäude (West)', Math.abs(brg.x0-b4East)<1&&Math.abs(brg.x1-b2West)<1, `Brücke x ${brg.x0}→${brg.x1}; B4-Ost=${b4East.toFixed(1)}, B2-West=${b2West.toFixed(1)}`)
+  chk('Gebäude real weit auseinander (Brücken-Spannweite ≥ 25 m)', (brg.x1-brg.x0)>=25, `Spannweite ${(brg.x1-brg.x0).toFixed(1)} m`)
   return out }
 /* Einziger 3D-Tuning-Handle: Werte in .config ändern, dann .applyMode() — ersetzt die alten window.__*-Streuungen */
 window.__kommilo3d={ config:sceneConfig, applyMode, setQualityTier, tier:()=>qualityTier, camera, controls, renderer, composer, info:()=>renderer.info.render, verifySitePlan }
