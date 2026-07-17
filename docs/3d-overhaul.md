@@ -647,7 +647,31 @@ wie Luftbild 2.
 zeigt zum Platz (Norden −z)", „Offener Universitätsplatz (Audimax Süd / Bib Nord / Forum Ost,
 Westseite offen) 30×32 m". 14/14 Interaktionsregression, 0 Konsolen-Fehler/-Warnungen.
 
-## 21. Files touched
+## 21. Runde 11 — Altgebäude als große, unregelmäßige, OFFENE Anlage + Okerhochhaus als Turmeingang
+
+Nutzerwunsch (detailliertes Luftbild des Altgebäude-Komplexes): das Altgebäude ist **viel
+größer**, **nicht gleichmäßig** (unregelmäßige Längen), **kein komplettes Stück** — es ist von
+oben **offen** und „endet am Okerhaus"; das **Okerhochhaus ist der tallste Teil + der Haupt-
+eingang** (gegenüber dem Forum) und über die **Brücke** Teil des Campus.
+
+- **Altgebäude → große offene U-Anlage.** Von 64×48 (geschlossenes Viereck) auf **76×58**
+  vergrößert und geöffnet: nur noch **3 Flügel** (Süd-Schaufassade + Nord-Arm + tiefer Ost-Basis-
+  Block „Zentral-Campus"), die **Westseite ist offen** → der Innenhof öffnet sich nach Westen zum
+  Okerhochhaus. Unregelmäßige Tiefen (Süd 15 / Nord 13 / Ost-Basis 18 m). Südfassadenebene bleibt
+  z=−62 (Parkplatzbezug unverändert). Schaufassade auf 11 Achsen über die breitere Front gespreizt;
+  Gesims-/Attika-Ringe laufen nur S/N/O (West offen). Neu: **Architekturpavillon** (Glaskubus) im Hof.
+- **Okerhochhaus = Turmeingang.** Neu positioniert (−60,−74), ragt nach Süden zur Straße; am
+  Südfuß ein **verglaster Haupteingang mit auskragendem Vordach + Stützen** (tallster Teil, 54 m).
+  Per **Glasbrücke** an die offene Westmündung des Altgebäudes angebunden (Spannweite 11.5 m).
+- Gelbes Haus „3a" bleibt enger SE-Nachbar des Okerhochhauses; Parkplatz östlich.
+
+Assertion-Anpassungen: „Altgebäude ist große offene U-Anlage (3 Flügel, West offen, 76×58)",
+„Okerhochhaus tallster Teil (54 m) mit Haupteingang", Brücken-Spannweite ≥ 8 m (Anbindung, nicht
+Trennung). Weltkoord.-Instanzen (Dentils, Hoffenster) auf Gruppenanker AX0/AZ0 umgestellt.
+
+**Assertions (Headless, verbatim): 24/24 PASS**, 14/14 Interaktionsregression, 0 Konsolen-Fehler.
+
+## 22. Files touched
 
 - `index.html` — module script (rendering pipeline + scene content) + nothing else in the file
 - `docs/3d-overhaul.md` — this document
