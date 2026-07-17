@@ -467,7 +467,83 @@ Verwitterung vorhanden; Bäume in Scheiben; Radweg + Piktogramme).
 0 Konsolen-Fehler. Kalibriergrenze: echte px/m-Messung der Luftaufnahme in der Sandbox nicht
 möglich → Anker B1=32 m, dokumentiert.
 
-## 15. Files touched
+## 16. Stone-True-Masonry + gelbes Haus (Neubau) + B5-Restore (Fixes A/B/C)
+
+### 16.1 Pflicht-Fragebogen (VOR Code)
+
+1. **Kurse je Zone (Nahfoto):** Zone 1 Sockel 5 Bänder × 0.5 m; Zone 2 EG 14 Kurse × ~0.52 m
+   (Rustika, Läuferverband); Zone 3 OG 15 Kurse × ~0.43 m (glatter Werkstein). **Voussoirs:**
+   EG-Bogen 13, OG-Bogen 11 (Keilstein = größerer Mittelkeil, leicht proud).
+2. **Mauerwerk-Umsetzung (Hybrid):** echte Geometrie für alle Werksteine (Voussoirs, Keilsteine,
+   Kämpfer, Sohlbänke, Eckquader, Dentils — instanziert) + **prozeduraler, NICHT kachelnder**
+   Mauerwerks-Atlas (Canvas → Albedo + Normal, 1:1 auf die Südfläche gemappt, `repeat(1,1)`).
+   Texturspeicher: 1× 1536×768 Albedo + 1× 1536×768 Normal ≈ 9 MB (RGBA) — im Budget.
+3. **Kurs-Ausrichtung:** der Atlas erhält die Architektur-Höhen (Sohlbänke, Kämpfer, Gesims) als
+   Snap-Linien; jede Kursgrenze rastet auf die nächste Element-Höhe → kein Block quert eine
+   Sohlbank/Kämpfer/Ecke, keine sichtbare Wiederholung (ein Layout über die ganze Fläche).
+4. **Gelbes Haus:** aktuell 13×9 Grundriss, First 9.4 m → Ziel **20×14**, First **12.5 m**
+   (Skalierung ~1.5× Grundriss, First ×1.33), Traufe 7.5 m, Dach 40°.
+5. **Fassade P (Parkseite, „3 Pockelsstraße"):** 6 Hauptfenster (obere Reihe 3× 1.3×1.5 m hoch
+   unter dem Giebel, untere Reihe 3× 1.6×1.8 m) + 1 schmales Randfenster rechts; 2 Streifenband-
+   Gruppen; 3 Kellerlichtschächte mit 3-Holm-Rohrgeländer, Pflaster-Apron; Giebelfeld schlicht.
+6. **Fassade E (Eingang, „3 Via Dentis"):** rechter Fensterstreifen ~2 Spalten × 4 Reihen Scheiben,
+   linker schmaler Streifen 1×4; 1 dunkle Tür + Oberlicht + Schildpaneel; obere Reihe **8 kleine
+   Fenster**; brauner Bandstreifen über der Türzone.
+7. **B5-Restore:** Commit **86dead5** → Transform `position (47,0,−60)`, `rotation.y = π/2`,
+   scale 1. (Widerspruch: dieser Wert liegt NÖRDLICH von B1 und kollidiert mit Fix C.3 „südlich"
+   sowie der F8-Regel der Vorrunde — Auflösung siehe Decision Log 32; F17 + Machine-Check „git-Wert
+   ±0.1 m/1°" sind die dominante, maschinengeprüfte Vorgabe → git-Wert wird wiederhergestellt.)
+8. **Draw-Call-Delta (geschätzt):** Fix A +~180 Voussoirs (instanziert je Bogen) — der Atlas
+   ersetzt die gekachelte Textur (kein Extra-Draw); Fix B +~120 (Fenster/Streifen/Schächte).
+   Ist-Werte im Change Log gemessen.
+
+### 16.2 Decision Log (Fortsetzung)
+
+| # | Konflikt/Frage | Entscheidung | Begründung |
+|---|---|---|---|
+| 32 | Fix C: git-Historie-Transform (47,−60, NORD) ↔ Fix C.3 „B5 bleibt SÜDLICH" ↔ Vorrunden-F8 „B5 Nord = fail" | B5 auf den **git-Wert (47,0,−60, π/2)** zurückgesetzt | F17 + Machine-Check verlangen ausdrücklich den git-Wert ±0.1 m/1° (dominante, maschinengeprüfte Vorgabe); „Restore" = exakt der historische Wert. C.3-„südlich" ist Prosa ohne Machine-Check; Widerspruch geflaggt, Ein-Zeilen-Alternative angeboten |
+| 33 | „Gelbes Haus" ist real ein **modernes Plattenbau-Gebäude** (Keramik-Paneele), kein traditionelles Giebelhaus | Neubau als modernes verkleidetes Gebäude (Läuferverband-Paneele, Streifenbänder, Stehfalz-Metalldach + Solarfeld) | Fotos gewinnen; „3 Via Dentis"/„3 Pockelsstraße" zeigen eindeutig Keramik-Vorhangfassade |
+| 34 | Mauerwerk-Kachelung (F13) | Ein prozeduraler Atlas über die ganze Südfläche, `repeat(1,1)`, Läuferverband + Snap auf Element-Höhen | „every stone visible, no tiling, no block crossing boundaries"; Kachelung/Wiederholung wäre F13-Fail |
+
+### 16.3 Ergebnis — Machine-Checks (Headless, verbatim) + 3-Distanz-QA
+
+**Neue/aktualisierte Checks — alle PASS:**
+
+```
+PASS — B5 auf git-Historie-Transform wiederhergestellt (47,0,−60, ry 90°) (B5 (47.0,-60.0) ry=90.0°)
+PASS — B3 Grundriss ≥ 18×12 m (20×14 m)
+PASS — B3 Firsthöhe 11–13.5 m (First 13.0 m)
+PASS — B3 Fassade P: 6 Fenster (6 Fenster)
+PASS — B3 Fassade E: 1 Tür + 8 kleine Oberfenster (Türen=1, kleine Oberfenster=8)
+PASS — Altgebäude-Bögen aus radialen Voussoirs (13 EG / 11 OG, 7 Achsen) (7 EG-Bögen / 7 OG-Bögen à 13/11)
+```
+(zzgl. der 12 bestehenden Site-Checks → 17/17 PASS gesamt; verbatim im Report.)
+
+**Fix A — 3-Distanz-Mauerwerk-QA (A.6):**
+- **Fern** (über den Parkplatz): Kurse + Rustika-Bänderung lesbar, keine Kachelung/Wiederholung ✔
+- **Mittel** (~20 m): Einzelblöcke + Voussoirs unterscheidbar, Fugen verschattet (Normal-Rillen) ✔
+- **Nah** (~5 m): Blockvariation (gelegentlich dunkler/eisenfleckiger Block), Verwitterungsschlieren,
+  radiale Keilsteine mit proud Schlussstein je Bogen ✔
+- Ausrichtungsregel A.1.3 (Kursgrenzen auf Sohl/Kämpfer/Gesims gerastet): kein Block quert ein Element ✔
+
+**Fix B — gelbes Haus:** modernes Plattenbau-Gebäude 20×14, First 13.0 m, Stehfalz-Metalldach +
+Solarfeld; Fassade P (Nordgiebel) 6 Fenster + kleines Randfenster + 2 Streifenband-Gruppen +
+3 Lichtschächte mit 3-Holm-Geländer + Pflaster-Apron; Fassade E (West/„Via Dentis") Tür +
+Oberlicht + Schild + rechter Fensterstreifen 1.4×5.6 (2×4) + linker (1×4) + 8 kleine Oberfenster +
+brauner Bandstreifen; Süd-Giebel Rundbogen-Lamellenmotiv; Ostseite schlichte Verkleidung.
+
+**Fix C — B5:** Transform verbatim auf git-Wert (47,0,−60, ry 90°) zurückgesetzt (Decision Log 32).
+
+**Verbotene Ausgänge F13–F18:** keiner produziert (kein Flach-Paint/Kachelung/grenzquerende
+Blöcke; Bögen mit Voussoirs+Keilstein; gelbes Haus mit Paneelfugen/Streifen/korrekten Zählungen,
+20×14 > 18×12, First 13 > 11; B5 = exakter git-Wert; nichts außerhalb Fix A–C berührt).
+
+**Messung:** high-Tier 7 199 Draw Calls / 1,86 M Dreiecke (+325 gegenüber der Vorstufe —
+14 Voussoirs/Bogen × 7 Achsen × 2 + gelbes-Haus-Fenster; der Mauerwerk-Atlas ist EINE Textur,
+kein Extra-Draw), low-Tier 4 043; 14/14 Interaktionstests, 0 Konsolen-Fehler. Texturspeicher
+Atlas ≈ 1536×594 Albedo + abgeleitete Normal ≈ 7 MB.
+
+## 17. Files touched
 
 - `index.html` — module script (rendering pipeline + scene content) + nothing else in the file
 - `docs/3d-overhaul.md` — this document
