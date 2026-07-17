@@ -143,6 +143,9 @@ strengths, leaf translucency).
 | 22 | Reflector spiegelte an einer senkrechten Ebene (Ribbon-Geometrie lag in XZ) | Eigener XY-Ribbon + Mesh-Kippung um −90° wie bei PlaneGeometry | Reflector leitet die Spiegelebene aus der Mesh-Rotation ab (Geometrie-Konvention: Normale +Z) |
 | 23 | `waternormals.jpg` vom CDN lud nie (npm-Paket von three enthält `examples/textures/` nicht — vorbestehend) | Prozedurale, kachelbare Wellen-Normalmap aus Sinus-Oktaven (CanvasTexture) | Null Payload, funktioniert offline und im Sandbox-Harness; entfernt eine tote Remote-Abhängigkeit |
 | 24 | „Töpfe für alle Bäume" auch auf Rasen/Ufer? | Ja — `treePit(x,z,s)` wird in `tree()` selbst aufgerufen, Kantenmaß skaliert mit Baumgröße | Explizite Nutzeranweisung („für alle Bäume"); einheitlicher urbaner Look |
+| 25 | Master-Prompt fordert „~10–14 geparkte Autos" am Parkplatz — direkter Widerspruch zur vorigen Nutzeranweisung „ich brauch keine Autos in meiner App" | Parkplatz mit markierten Stellflächen, aber OHNE Autos; prominent im Report geflaggt + Ein-Zeilen-Reaktivierung angeboten | Konfliktreihenfolge: die persönliche, emphatische, jüngste Eigenaussage des Nutzers wiegt schwerer als die Realismus-Zeile eines Struktur-Prompts; trivial reversibel, kein Assertion-Bruch (Checks prüfen die Lage, nicht Autos) |
+| 26 | Okerhochhaus-Fassade: flach bemaltes Fensterraster vs. echtes Relief | Waffelraster als echte proud-Geometrie (instanzierte Bänder+Pfosten) über zurückgesetzter Scheibe → echte ~0.35 m Laibung | Master-Prompt: „flat painted windows are a failed review"; Relief/Verschattung macht die Fassade real; Instancing hält die Draw Calls niedrig |
+| 27 | Machine-Check „0 Fenster auf Schmalseiten" — Gefahr einer Tautologie | Traverse über `userData.glaz`-Meshes mit `|z|<|x|`; Scheiben nur auf ±Z gebaut → strukturell 0, aber der Check liest echte Kindobjekte statt einer Konstante | Prüft die reale Szene: würde jemand versehentlich eine Scheibe auf ±X legen, schlägt er an |
 
 **Dependencies added: none.** (Only `three/addons` modules from the already-used three@0.169.0 CDN package: `Sky`, `GTAOPass`, `ShaderPass`, `VignetteShader`, `Water`.)
 
@@ -304,7 +307,77 @@ Betweenness, Langachse, Schmalseite, **Portale nach Osten**, **Audimax gegenübe
 Oker-Seite. **Messung:** high-Tier 6 413 Draw Calls / 1,76 M Dreiecke (amortisiert +301 Calls
 durch den gedrosselten Spiegelpass), low-Tier 3 588; 14/14 Interaktionstests, 0 Konsolen-Fehler.
 
-## 11. Files touched
+## 12. Architektur-Datenblätter (CAD-Methode, aus den Referenzfotos abgeleitet)
+
+Der Eigentümer verlangte explizit ein **Planungs-Datenblatt vor der Geometrie** — wie ein
+Architekturbüro. Zuerst das Datenblatt, dann folgt die Umsetzung exakt, dann prüft QA die
+gebaute Geometrie gegen Datenblatt UND Fotos.
+
+### 12.1 Okerhochhaus (TU Braunschweig, Pockelsstraße)
+
+| Parameter | Wert (Datenblatt) | Quelle/Begründung |
+|---|---|---|
+| Typ | Scheibenhochhaus (kein quadratischer Turm) | Foto 3: Schmalseite deutlich dünner als Langseite |
+| Grundriss | 34 m (lang) × 11 m (kurz) = **3.09:1** | Foto 2 Fassadenbreite ~14 Achsen, Foto 3 Schlankheit |
+| Höhe | ~53.8 m (EG 4.5 m + 16 Geschosse × 3.05 m) | Fotos: ~17 Bänder über zurückgesetztem EG |
+| Achsraster Langseite | 14 Achsen × 2.43 m Modul | Foto 2/5: sehr regelmäßiges, enges Raster |
+| Fenster | nahezu quadratisch (~2.0 × 2.05 m), dunkel spiegelnd | Bandhöhe 1.0 m + Pfosten 0.42 m → quadratische Öffnung |
+| Laibungstiefe | **Rippenraster proud ~0.4 m** über zurückgesetzter Scheibe (~0.35 m Reveal) | Foto 2/3: tiefe Schattenkanten, Waffelrelief |
+| Rahmenfarbe | warmes helles Betongrau `#c4c3bc` | Fotos: heller warmer Beton |
+| Scheibe | dunkel `#2b333b`, roughness .2, metalness .5 | Fotos: dunkle, leicht spiegelnde Verglasung |
+| **Schmalseiten** | **fensterlos**, kühleres/dunkleres Plattenraster `#a9adb2` mit Fugengitter | Foto 3: rechte Seite komplett geschlossen |
+| Dach | **dunkles dünnes Vordach, allseitig ~0.9 m auskragend** `#33383d`; Technik + Antenne zurückgesetzt | Fotos 2/3: schwebende dunkle Kappenlinie = Signatur |
+| EG | zurückgesetztes dunkles Glasband `#23282d` (Sockel, 0.5 m Rücksprung) | Foto 3: Scheibe „steht" auf dunkler Basis |
+
+**Umsetzung:** Kernmasse `BoxGeometry(34,48.8,11)` mit Material-Array — Schmalseiten (±X) =
+`endM` (Plattenraster), Langseiten (±Z) = `bodyM`. Pro Langseite eine dunkle Scheibenebene
+(`glazM`, `userData.glaz=true`) bündig; davor kragt das Raster aus **echter Geometrie**:
+instanzierte Brüstungsbänder (`Box(34,1.0,0.5)`, 17 Reihen ×2) + Pfosten (`Box(0.42,48.8,0.5)`,
+15 ×2), Betonmaterial, proud bei z=±(SHORT/2+0.15). Dunkles EG `tbase` eingerückt, dunkles
+Vordach `hhCap` `Box(35.8,0.55,12.8)` (+0.9 allseitig). Nur ~8 Draw Calls + 2 InstancedMesh.
+
+### 12.2 Gelbes Giebelhaus
+
+| Parameter | Wert (Datenblatt) | Quelle |
+|---|---|---|
+| Grundriss | 13 × 9 m | Foto 4/5 Proportion neben dem Turm |
+| Geschosse | 2 (6.0 m Wand) + hoher Giebel (First ~8.6 m) | Foto 4 |
+| Dach | Satteldach ~42°, dünne dunkle Traufkante, minimaler Überstand | Foto 4 |
+| Fassade | ockergelb `#d3b061` | Foto 4/5 |
+| Streifenbänder | Gruppen horizontaler dunkler Bänder `#6b5334` (2 Gruppen à 3) | Foto 4: braune Querstreifen |
+| Fenster | dunkel gerahmte Rechtecke (2 Reihen × 4) | Foto 4 |
+| Ost-Giebel | **Rundbogenfenster** nahe First + vertikales **Lamellenband** darunter | Foto 4/„1 Via Dentis"-Serie |
+
+**Umsetzung:** `Box(13,6,9)` Ochre, Satteldach (2 geneigte Platten + 2 Giebeldreiecke), 6
+instanzierte Streifenbänder auf der Südseite, gerahmte Fenster (Rahmen `frameM` + Scheibe
+`winGlass`), Ost-Giebel `TorusGeometry`-Bogen + `CircleGeometry`-Scheibe + 5 Lamellen-Slats.
+
+### 12.3 Fix 3 — Parkplatz
+
+Lag zuvor **hinter/östlich** dem Altgebäude (falsch). Jetzt (bereits in v2) **zwischen
+Altgebäude-Westfassade (x≈11) und Studierendenhaus**, Zentroid (3, −38.4), Einfahrt von der
+Via Dentis, Rasen-/Heckenrand. **Entscheidung (Konflikt, Decision Log 25):** Der Master-Prompt
+nennt „~10–14 geparkte Autos", die vorige Nutzeranweisung war jedoch emphatisch „ich brauch
+keine Autos in meiner App". Die stärkere, persönliche Nutzerpräferenz gewinnt → Parkplatz mit
+markierten Stellflächen, aber **ohne Autos**; auf Wunsch in einer Zeile reaktivierbar.
+
+**Assertions (Headless, verbatim):** 13/13 PASS — die 8 Platzierungschecks plus fünf neue:
+Seitenverhältnis 3.09:1 (≥2.8), Höhe 53.8 m (50–65), **0 Fenster auf Schmalseiten**,
+Vordach 35.8×12.8 > Körper 34×11 (allseitige Auskragung), Parkplatz x=3.0 < Westfassade x=11
+(nicht dahinter; liest jetzt die echte Mesh-Position). **Messung:** high-Tier 6 496 Draw Calls /
+1,77 M Dreiecke (+83 Calls gegenüber v2 — das Waffelraster ist instanziert), low-Tier 3 636;
+14/14 Interaktionstests, 0 Konsolen-Fehler.
+
+**Adversarielles Multi-Agent-Review (7 Prüf-Dimensionen × Verifikations-Pass):** 2 bestätigte
+Befunde gefixt — (a) **major**: gelbes Dach nicht wasserdicht (First schwebte ~0.67 m über dem
+Giebelscheitel, da Neigung 0.72 rad fix statt aus Firsthöhe/Tiefe abgeleitet) → `pitch=atan2(GPEAK,GD/2)`,
+`slope=hypot(GD/2,GPEAK)`, GPEAK 2.6→3.4; (b) **nit**: obere Fensterreihe ragte 7.5 cm über
+die Wandkante in die Traufzone → Reihenhöhe gesenkt. Zusätzlich selbst gefunden+gefixt: Streifenbänder
+lagen im Welt-Instancing statt lokal (Hausdrehung −0.12 nicht mitgemacht) und die Parkplatz-Assertion
+las ein hartkodiertes Literal (Tautologie) → beide behoben. Massing, Waffel-Laibung, fensterlose
+Schmalseiten, Dachvordach/Sockel und die Assertions selbst wurden als korrekt bestätigt.
+
+## 13. Files touched
 
 - `index.html` — module script (rendering pipeline + scene content) + nothing else in the file
 - `docs/3d-overhaul.md` — this document

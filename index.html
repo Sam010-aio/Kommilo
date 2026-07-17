@@ -903,6 +903,7 @@ function paverMat(rx,ry2){ const m2=new THREE.MeshStandardMaterial({roughness:.9
   const park=new THREE.Mesh(new THREE.PlaneGeometry(16,23),new THREE.MeshStandardMaterial({color:'#eceded',map:parkT,
     roughness:sceneConfig.materials.asphaltRoughness,normalMap:normalFromTex(parkT,NS.asphalt),roughnessMap:parkR}))
   park.rotation.x=-Math.PI/2; park.position.set(3,.011,-38.4); park.receiveShadow=true; buildingGroup.add(park)
+  SITE.parking=park // echte Mesh-Referenz (keine dupliziertere Literal-Konstante) → Assertion misst die tatsächliche Lage
   /* Stellplatz-Markierungen: Ostreihe zur Altgebäude-Fassade, Westreihe zur Hecke, Gasse dazwischen */
   const stalls=[]
   for(let z=-28.6;z>=-48.6;z-=2.5){ stalls.push({x:8.2,y:.02,z},{x:-2.3,y:.02,z}) }
@@ -1428,43 +1429,90 @@ bike(4.5,15.6,1.2); bike(-13.5,15.8,-1.4)
         gl.position.set(0,13.0,-2.5); R.add(gl)
         const ridge=new THREE.Mesh(new THREE.BoxGeometry(grx*2,.14,.14),trimM); ridge.position.set(0,13.0+gh,-2.5); R.add(ridge)
         const base2=new THREE.Mesh(new THREE.BoxGeometry(gw+.4,.3,gd+.4),trimM); base2.position.set(0,12.95,-2.5); R.add(base2) } } }
-  /* Hochhaus-Turm — bindende Ordnung: ganz links + am weitesten vom Eingang, hinter dem
-     gelben Haus. Nutzerkorrektur: vertikal lang, horizontal HALB so breit wie zuvor —
-     schlanke Scheibe. Fassade: helles Raster, dunkle Scheiben, 17 Geschosse; pro
-     Fassadenbreite eigene Bay-Zahl (Material-Array), damit die Fenster nicht verzerren. */
+  /* ===== Okerhochhaus (TU BS) — CAD-Nachbau nach Referenzfotos (docs/3d-overhaul §12) =====
+     Datenblatt: Scheibenhochhaus 34×11 m Grundriss (3.09:1), 16 Bürogeschosse à 3.05 m über
+     zurückgesetztem EG (4.5 m), Gesamthöhe ~54 m. Langfassaden = Waffelraster aus proud
+     stehenden hellen Betonrippen (Brüstungsbänder + Pfosten) mit dahinter zurückgesetzten
+     dunklen Scheiben (echte Laibungstiefe ~0.35 m). Schmalseiten fensterlos, kühleres
+     Plattenraster. Dünnes dunkles Dachvordach kragt allseitig aus. Position/Rotation fix. */
   const hh=new THREE.Group(); hh.position.set(-52,0,-50); hh.rotation.y=.3; buildingGroup.add(hh); SITE.tower=hh
-  const hhTex=CO=>{ const c2=cvs(512),x2=c2.getContext('2d')
-    x2.fillStyle='#c2c7cd'; x2.fillRect(0,0,512,512)                    // helles Rasterskelett
-    const FL=17, ch=512/FL, cw=512/CO
-    for(let f=0;f<FL;f++)for(let k=0;k<CO;k++){
-      const lit=((f*7+k*3)%11)<2                                       // wenige erleuchtete Scheiben, deterministisch
-      x2.fillStyle=lit?'#aebfce':'#2f3a45'
-      x2.fillRect(k*cw+5,f*ch+6,cw-10,ch-11)                            // dunkle Scheibe im hellen Rahmen
-      x2.fillStyle='#9aa2ab'                                            // Brüstungsband unter der Scheibe
-      x2.fillRect(k*cw+5,f*ch+ch-5,cw-10,2) }
-    return tx(c2) }
-  const hhMN=new THREE.MeshStandardMaterial({map:hhTex(4),roughness:.5,metalness:.12})   // Schmalfassade (8 m): 4 Bays
-  const hhMW=new THREE.MeshStandardMaterial({map:hhTex(6),roughness:.5,metalness:.12})   // Breitfassade (11 m): 6 Bays
-  const hhMT=new THREE.MeshStandardMaterial({color:'#c2c7cd',roughness:.55})
-  const hhB=new THREE.Mesh(new THREE.BoxGeometry(8,52,11),[hhMW,hhMW,hhMT,hhMT,hhMN,hhMN])
-  hhB.position.y=26; hhB.castShadow=true; hh.add(hhB)
-  const hhCap=new THREE.Mesh(new THREE.BoxGeometry(9.4,.6,12.4),new THREE.MeshStandardMaterial({color:'#b9bfc7',roughness:.55}))
-  hhCap.position.y=52.5; hh.add(hhCap) // schlank auskragendes Dachvordach
-  const tech=new THREE.Mesh(new THREE.BoxGeometry(4.5,2.2,4.2),new THREE.MeshStandardMaterial({color:'#8d97a5',roughness:.8})); tech.position.y=53.8; hh.add(tech)
-  const ant=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,4,6),new THREE.MeshStandardMaterial({color:'#5c646e',roughness:.5})); ant.position.y=56.9; hh.add(ant)
-  /* Gelbes 2-geschossiges Giebelhaus (zwischen Eingang und Turm) */
-  /* Gelbes Giebelhaus — bindende Ordnung: ZWISCHEN Turm und Altgebäude, vor dem Turm */
+  const T_LONG=34, T_SHORT=11, T_BASEH=4.5, T_FLOORS=16, T_FLH=3.05, T_AXES=14 // Datenblatt-Maße
+  const T_GRIDH=T_FLOORS*T_FLH, T_TOP=T_BASEH+T_GRIDH                          // 48.8 / 53.3
+  const concGrid=new THREE.MeshStandardMaterial({color:'#c4c3bc',roughness:.72,metalness:.04}) // warmer heller Betonrahmen
+  const glazM=new THREE.MeshStandardMaterial({color:'#2b333b',roughness:.2,metalness:.5})       // dunkle, spiegelnde Scheibe
+  /* Schmalseite: geschlossenes, kühleres Betonplatten-Raster (Fugen), NULL Fenster */
+  const endTex=(()=>{ const c2=cvs(256),x2=c2.getContext('2d')
+    x2.fillStyle='#adb1b6'; x2.fillRect(0,0,256,256)
+    x2.strokeStyle='#8d9298'; x2.lineWidth=2
+    for(let gx=0;gx<=256;gx+=64) { x2.beginPath(); x2.moveTo(gx,0); x2.lineTo(gx,256); x2.stroke() }
+    for(let gy=0;gy<=256;gy+=40){ x2.beginPath(); x2.moveTo(0,gy); x2.lineTo(256,gy); x2.stroke() }
+    const t2=tx(c2); t2.repeat.set(2,8); return t2 })()
+  const endM=new THREE.MeshStandardMaterial({map:endTex,color:'#a9adb2',roughness:.82,metalness:.03})
+  const bodyM=new THREE.MeshStandardMaterial({color:'#bdbcb4',roughness:.8}) // Langfassaden-Kern (von Scheibe+Raster verdeckt)
+  /* Kernmasse: liefert die fensterlosen Schmalseiten über Material-Array [+x,-x,+y,-y,+z,-z] */
+  const core=new THREE.Mesh(new THREE.BoxGeometry(T_LONG,T_GRIDH,T_SHORT),[endM,endM,bodyM,bodyM,bodyM,bodyM])
+  core.position.y=T_BASEH+T_GRIDH/2; core.castShadow=true; core.receiveShadow=true; hh.add(core)
+  hh.userData.coreMesh=core
+  /* Zurückgesetztes, dunkles EG (Lobby-Glasband) — die Scheibe „steht" auf dunkler Basis */
+  const tbase=new THREE.Mesh(new THREE.BoxGeometry(T_LONG-1.0,T_BASEH,T_SHORT-1.0),new THREE.MeshStandardMaterial({color:'#23282d',roughness:.3,metalness:.35}))
+  tbase.position.y=T_BASEH/2; tbase.castShadow=true; hh.add(tbase)
+  /* Langfassaden-Scheibenfeld (2×) — bündig, davor kragt das Rippenraster */
+  ;[1,-1].forEach(sg=>{ const gl=new THREE.Mesh(new THREE.BoxGeometry(T_LONG-.05,T_GRIDH-.05,.08),glazM)
+    gl.position.set(0,T_BASEH+T_GRIDH/2,sg*(T_SHORT/2+.02)); gl.userData.glaz=true; hh.add(gl) })
+  /* Waffelraster als echte Geometrie: horizontale Brüstungsbänder + vertikale Pfosten, proud.
+     Bandhöhe 1.0 m macht die Scheiben nahezu quadratisch (Öffnung ~2.0×2.05 m). */
+  const proudZ=T_SHORT/2+.15, PD=.5
+  const bandGeo=new THREE.BoxGeometry(T_LONG,1.0,PD), mulGeo=new THREE.BoxGeometry(.42,T_GRIDH,PD)
+  const bandPos=[], mulPos=[]
+  for(let i=0;i<=T_FLOORS;i++){ const y=T_BASEH+i*T_FLH; bandPos.push([0,y,proudZ],[0,y,-proudZ]) }
+  const mProud=proudZ+.03 // Pfosten stehen 3 cm vor den Bändern → keine koplanare Deckungsfläche (kein Z-Fighting bei späterer Tönung)
+  for(let j=0;j<=T_AXES;j++){ const x=-T_LONG/2+j*(T_LONG/T_AXES); mulPos.push([x,T_BASEH+T_GRIDH/2,mProud],[x,T_BASEH+T_GRIDH/2,-mProud]) }
+  const localIM=(geo,pos)=>{ const im=new THREE.InstancedMesh(geo,concGrid,pos.length), m4=new THREE.Matrix4()
+    pos.forEach((p,i)=>{ m4.makeTranslation(p[0],p[1],p[2]); im.setMatrixAt(i,m4) })
+    im.instanceMatrix.needsUpdate=true; im.castShadow=true; im.receiveShadow=true; im.frustumCulled=false; hh.add(im); return im }
+  localIM(bandGeo,bandPos); localIM(mulGeo,mulPos)
+  /* Dünnes dunkles Dachvordach — kragt allseitig aus (Signatur-Silhouette) */
+  const capOV=.9
+  const hhCap=new THREE.Mesh(new THREE.BoxGeometry(T_LONG+2*capOV,.55,T_SHORT+2*capOV),new THREE.MeshStandardMaterial({color:'#33383d',roughness:.6,metalness:.2}))
+  hhCap.position.y=T_TOP+.28; hhCap.castShadow=true; hh.add(hhCap); hh.userData.capMesh=hhCap
+  hh.userData.height=T_TOP+.55
+  const tech=new THREE.Mesh(new THREE.BoxGeometry(T_LONG*.52,2.2,T_SHORT*.5),new THREE.MeshStandardMaterial({color:'#8d97a5',roughness:.8})); tech.position.y=T_TOP+1.55; tech.castShadow=true; hh.add(tech)
+  const ant=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,4,6),new THREE.MeshStandardMaterial({color:'#5c646e',roughness:.5})); ant.position.y=T_TOP+4; hh.add(ant)
+  /* ===== Gelbes Giebelhaus — CAD-Nachbau nach Referenzfotos (docs/3d-overhaul §12) =====
+     Datenblatt: 2 Geschosse (6.0 m) + hoher Giebel (Firsthöhe ~8.6 m), Satteldach ~42°,
+     dünne dunkle Traufkante, ockergelbe Fassade mit horizontalen dunklen Streifenbändern,
+     dunkel gerahmte Rechteckfenster, im Ost-Giebel Rundbogenfenster + Lamellenband darunter.
+     Position/Rotation fix (zwischen Turm und Altgebäude). */
   { const gb=new THREE.Group(); gb.position.set(-20,0,-33.5); gb.rotation.y=-.12; buildingGroup.add(gb); SITE.yellow=gb
-    const body=new THREE.Mesh(new THREE.BoxGeometry(13,6.5,9),new THREE.MeshStandardMaterial({color:'#d9b96a',roughness:.85}))
-    body.position.y=3.25; body.castShadow=true; gb.add(body)
-    ;[-1,1].forEach(sd=>{ const rf=new THREE.Mesh(new THREE.BoxGeometry(13.6,.22,5.6),roofD)
-      rf.position.set(0,7.7,sd*2.32); rf.rotation.x=sd*.48; rf.castShadow=true; gb.add(rf) })
-    const gShape=new THREE.Shape(); gShape.moveTo(-4.5,0); gShape.lineTo(4.5,0); gShape.lineTo(0,2.2); gShape.closePath()
-    ;[-6.5,6.5].forEach(gx=>{ const tri=new THREE.Mesh(new THREE.ShapeGeometry(gShape),new THREE.MeshStandardMaterial({color:'#d2b263',roughness:.85,side:THREE.DoubleSide}))
-      tri.rotation.y=Math.PI/2; tri.position.set(gx,6.5,0); gb.add(tri) })
-    for(let fl=0;fl<2;fl++)for(let k=0;k<5;k++){ const win=new THREE.Mesh(new THREE.BoxGeometry(.9,1.4,.08),winGlass)
-      win.position.set(-4.8+k*2.4,1.8+fl*2.6,4.55); gb.add(win) }
-    const dr=new THREE.Mesh(new THREE.BoxGeometry(1.2,2.3,.1),doorM); dr.position.set(0,1.15,-4.55); gb.add(dr) }
+    const GW=13, GD=9, GBODY=6.0, GPEAK=3.4                                    // Breite/Tiefe/Wandhöhe/Giebelhöhe (First 9.4 m)
+    const ochre=new THREE.MeshStandardMaterial({color:'#d3b061',roughness:.86})
+    const stripeM=new THREE.MeshStandardMaterial({color:'#6b5334',roughness:.85})   // dunkles Streifenband
+    const frameM=new THREE.MeshStandardMaterial({color:'#2a2724',roughness:.6})      // dunkler Fensterrahmen
+    const body=new THREE.Mesh(new THREE.BoxGeometry(GW,GBODY,GD),ochre); body.position.y=GBODY/2; body.castShadow=true; gb.add(body)
+    /* Satteldach: First entlang X. Neigung + Länge AUS Firsthöhe/Tiefe abgeleitet, damit der
+       First exakt den Giebelscheitel (GBODY+GPEAK) trifft — sonst klafft der Giebel (QA-Fund). */
+    const pitch=Math.atan2(GPEAK,GD/2), slope=Math.hypot(GD/2,GPEAK)+.3 // +0.3 = kleiner Traufüberstand
+    ;[-1,1].forEach(sd=>{ const rf=new THREE.Mesh(new THREE.BoxGeometry(GW+.5,.2,slope),roofD)
+      rf.position.set(0,GBODY+GPEAK/2,sd*(GD/4)); rf.rotation.x=sd*pitch; rf.castShadow=true; gb.add(rf) })
+    const gShape=new THREE.Shape(); gShape.moveTo(-GD/2,0); gShape.lineTo(GD/2,0); gShape.lineTo(0,GPEAK); gShape.closePath()
+    ;[-1,1].forEach(sg=>{ const tri=new THREE.Mesh(new THREE.ShapeGeometry(gShape),new THREE.MeshStandardMaterial({color:'#cba95c',roughness:.86,side:THREE.DoubleSide}))
+      tri.rotation.y=sg*Math.PI/2; tri.position.set(sg*GW/2,GBODY,0); gb.add(tri) })
+    /* Horizontale Streifenbänder auf der Südlangseite (Foto: Gruppen dunkler Bänder) —
+       lokale Kinder von gb, damit sie die Hausdrehung (-.12) mitmachen (kein Welt-Instancing) */
+    const stripeGeo=new THREE.BoxGeometry(GW-1.2,.14,.06)
+    for(const yb of [1.15,1.5,1.85, 4.0,4.35,4.7]){ const st=new THREE.Mesh(stripeGeo,stripeM)
+      st.position.set(0,yb,GD/2+.03); st.castShadow=true; gb.add(st) }
+    /* Dunkel gerahmte Rechteckfenster (2 Reihen) auf der Südseite */
+    for(let fl=0;fl<2;fl++)for(let k=0;k<4;k++){ const wx=-4.5+k*3, wy=2.55+fl*2.3 // Oberkante ≤ Wandhöhe 6 m (QA-Fund: kein Überstand in die Traufzone)
+      const fr=new THREE.Mesh(new THREE.BoxGeometry(1.05,1.65,.1),frameM); fr.position.set(wx,wy,GD/2+.05); gb.add(fr)
+      const wn=new THREE.Mesh(new THREE.BoxGeometry(.82,1.42,.06),winGlass); wn.position.set(wx,wy,GD/2+.09); gb.add(wn) }
+    /* Ost-Giebel (zum Campus): Rundbogenfenster + vertikales Lamellenband darunter */
+    { const gx=GW/2+.04
+      const arc=new THREE.Mesh(new THREE.TorusGeometry(.62,.12,8,18,Math.PI),frameM); arc.rotation.y=Math.PI/2; arc.position.set(gx,7.0,0); gb.add(arc)
+      const arcG=new THREE.Mesh(new THREE.CircleGeometry(.56,20,0,Math.PI),winGlass); arcG.rotation.y=-Math.PI/2; arcG.position.set(gx,7.0,0); gb.add(arcG)
+      const arcB=new THREE.Mesh(new THREE.BoxGeometry(.1,.14,1.24),frameM); arcB.position.set(gx,7.0,0); gb.add(arcB)
+      for(let l=0;l<5;l++){ const lo=new THREE.Mesh(new THREE.BoxGeometry(.06,1.5,.11),frameM); lo.position.set(gx,5.7,-.5+l*.25); gb.add(lo) } }
+    const dr=new THREE.Mesh(new THREE.BoxGeometry(1.2,2.3,.1),doorM); dr.position.set(0,1.15,-GD/2-.05); gb.add(dr) }
   /* Audimax (weiße Moderne) — Nutzerkorrektur: NICHT am Fluss, sondern GEGENÜBER dem
      Altgebäude-Haupteingang (Ost); Kolonnadenfront nach Westen zum Vorplatz */
   { const au=new THREE.Group(); au.position.set(47,0,-60); au.rotation.y=Math.PI/2; buildingGroup.add(au); SITE.audimax=au
@@ -3040,6 +3088,19 @@ function verifySitePlan(){
   const auP=wp(SITE.audimax)
   chk('Audimax gegenüber dem Altgebäude-Haupteingang (östlich, achsnah)', auP.x>aP.x+12 && Math.abs(auP.z-aP.z)<8, `Audimax x=${auP.x.toFixed(0)} > Altgebäude x=${aP.x.toFixed(0)}+12, |Δz|=${Math.abs(auP.z-aP.z).toFixed(1)} m`)
   chk('Oker gegenüber der Straße (Pavillon dazwischen)', SITE.riverZ>0, `Fluss z≈+${SITE.riverZ}, Via Dentis z≈-22.5`)
+  /* ---- Okerhochhaus-Architektur (Datenblatt §12) — maschinell gegen die echte Geometrie ---- */
+  const cg=SITE.tower.userData.coreMesh.geometry.parameters, cap=SITE.tower.userData.capMesh.geometry.parameters
+  const tw=Math.max(cg.width,cg.depth), td=Math.min(cg.width,cg.depth), aspect=tw/td
+  chk('Turm-Scheibe: Grundriss-Seitenverhältnis ≥ 2.8:1', aspect>=2.8, `${tw.toFixed(0)}×${td.toFixed(0)} m = ${aspect.toFixed(2)}:1`)
+  chk('Turm-Höhe 50–65 m', SITE.tower.userData.height>=50&&SITE.tower.userData.height<=65, `${SITE.tower.userData.height.toFixed(1)} m`)
+  let endWin=0; SITE.tower.traverse(o=>{ if(o.userData.glaz && Math.abs(o.position.z)<Math.abs(o.position.x)) endWin++ })
+  chk('Null Fenster auf den beiden Schmalseiten', endWin===0, `Scheibenflächen auf Schmalseiten: ${endWin}`)
+  chk('Dachvordach kragt allseitig über den Baukörper aus', cap.width>cg.width&&cap.depth>cg.depth,
+    `Vordach ${cap.width.toFixed(1)}×${cap.depth.toFixed(1)} > Körper ${cg.width.toFixed(0)}×${cg.depth.toFixed(0)}`)
+  /* ---- Parkplatz-Lage (Fix 3): zwischen Altgebäude-Straßenfassade und Studierendenhaus, NICHT dahinter ---- */
+  const pk=wp(SITE.parking), altWest=aP.x-7 // Parkplatz-Weltposition aus dem echten Mesh; Altgebäude-Westfassade (Tiefe 14 m, ry+90°) ≈ x 11
+  chk('Parkplatz zwischen Altgebäude-Westfassade und Studierendenhaus (nicht dahinter)',
+    pk.x<altWest && pk.x>-8 && pk.x<aP.x, `Parkplatz x=${pk.x.toFixed(1)} < Westfassade x=${altWest.toFixed(0)} und < Altgebäude-Mitte x=${aP.x.toFixed(0)} (dahinter wäre x>${(aP.x+7).toFixed(0)})`)
   return out }
 /* Einziger 3D-Tuning-Handle: Werte in .config ändern, dann .applyMode() — ersetzt die alten window.__*-Streuungen */
 window.__kommilo3d={ config:sceneConfig, applyMode, setQualityTier, tier:()=>qualityTier, camera, controls, renderer, composer, info:()=>renderer.info.render, verifySitePlan }
