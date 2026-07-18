@@ -881,7 +881,7 @@ CDN (Egress/Ausfall/Version-Drift), macht die App selbst-hostend und den SW-Cach
 
 **Q4 — Build-Stamp-Plan.** Eine Quelle `BUILD` (Nummer + ISO-Datum) in `index.html` UND `sw.js`;
 Cache-Name = `kommilo-v${BUILD}` (an den Build gebunden ⇒ Build-Wechsel invalidiert alten Cache
-deterministisch). Sichtbar unten links als dezenter Stempel `v2026.07.18-a5f32d7`; der
+deterministisch). Sichtbar unten links als dezenter Stempel `v2026.07.18-e0030f1`; der
 Kurz-Hash wird in einem finalen Stempel-Commit auf den Inhalts-Commit gesetzt (ohne Build-Schritt ist
 ein selbstreferenzieller Hash unmöglich — ehrlich dokumentiert; Nummer+Datum sind deterministisch und
 für die Delivery-Verifikation ausreichend). Der `?debug=perf`-Overlay zeigt denselben Stempel.
@@ -947,7 +947,7 @@ prozeduralem Canvas-Fallback). Beweis: **App bootet mit KOMPLETT geblocktem jsde
 — three ist echt same-origin. (b) `sw.js` neu: Cache = `kommilo-v${BUILD}` (an den Build gebunden),
 HTML network-first, `/vendor/`+CORE+CDN cache-first, `skipWaiting`+`clients.claim`, precached
 index+manifest+icons+`three.module.js`. (c) `window.__BUILD={id,date,hash}` als EINE Quelle; sichtbarer
-Fuß-Stempel `v2026.07.18-a5f32d7`; **selbst-enthaltener Reload-Hinweis** „Neue Version
+Fuß-Stempel `v2026.07.18-e0030f1`; **selbst-enthaltener Reload-Hinweis** „Neue Version
 verfügbar — neu laden" via `updatefound`→`installed`+Controller (kein Fehlalarm beim Erstbesuch). Beweis:
 Build-Bump im Test → neuer SW → Toast erscheint → Cache wird zu `kommilo-v<neu>` (alte Caches gelöscht).
 
@@ -1032,7 +1032,7 @@ Okerhochhaus/Brücke/gelbes Haus/Audimax alle intakt) auf jeder Stufe; **14/14**
 gerendert; App-Logik/Auth/Payments/Credits/Moderation unangetastet.
 
 **Owner-Verifikation (auf echtem Gerät, deutsch):**
-1. `https://kommilo.app` öffnen → unten mittig steht `v2026.07.18-a5f32d7`. Ist die Nummer/das
+1. `https://kommilo.app` öffnen → unten mittig steht `v2026.07.18-e0030f1`. Ist die Nummer/das
    Datum aktuell, läuft der neuste Build. (Kommt ein grauer Balken „Neue Version verfügbar — neu laden",
    einmal neu laden — dann bist du sicher aktuell.)
 2. `https://kommilo.app/?debug=perf` → Overlay oben links zeigt FPS, ms, Draw-Calls, DPR, **Stufe** und
