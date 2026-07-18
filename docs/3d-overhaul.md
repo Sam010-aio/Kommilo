@@ -1043,6 +1043,20 @@ gerendert; App-Logik/Auth/Payments/Credits/Moderation unangetastet.
    Bild beim Ziehen minimal weicher werden — das ist der Interaction-Boost, er kommt nach ~¼ s zurück).
 5. Erzwinge eine Stufe zum Vergleich: `?quality=potato` (leichteste) vs. `?quality=high` (volle Qualität).
 
+**Deployment-Verifikations-Protokoll (F32) — was live gehen muss:**
+- **Zu mergen:** der PR-Branch `claude/3d-realism-overhaul-asm4ve` (HEAD), sitzt auf dem bereits gemergten
+  `main`/`aba4ce7`; Inhalts-Commit `e0030f1` + Stempel-Pin. Der Merge kann per Merge-/Squash-Commit
+  erfolgen — der **stabile Anker** ist NICHT der Merge-Hash, sondern der on-screen-Stempel.
+- **Erwarteter Live-Stempel:** `v2026.07.18-e0030f1` (Fuß unten mittig **und** im `?debug=perf`-Overlay).
+  SW-Cache = `kommilo-v2026.07.18-e0030f1`.
+- **3-Schritt-Check nach dem Deploy:** (1) `kommilo.app` hart neu laden (Strg/Cmd+Shift+R), Stempel lesen.
+  (2) In einem **Inkognito-Fenster** öffnen, Feel/Stempel vergleichen. (3) **Stimmt der Stempel NICHT mit
+  `e0030f1` überein**, ist der Deploy-/Cache-Pfad kaputt: Der neue SW ist network-first für HTML und
+  löscht Fremd-Caches beim `activate` — bleibt trotzdem ein alter Stempel stehen, einmal den SW in den
+  DevTools (Application → Service Workers → *Unregister*) entfernen und neu laden; danach greift der
+  Build-gebundene Cache. (Ein hängender alter SW aus der `wlt-v24`-Ära ist der wahrscheinlichste Grund,
+  warum frühere Perf-Arbeit nie ankam — dieser Build ersetzt ihn beim ersten Online-Load.)
+
 ## 24. Files touched
 
 - `index.html` — module script (rendering pipeline + scene content) + merged production system;
