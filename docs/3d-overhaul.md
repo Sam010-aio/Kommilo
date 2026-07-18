@@ -671,7 +671,39 @@ Trennung). Weltkoord.-Instanzen (Dentils, Hoffenster) auf Gruppenanker AX0/AZ0 u
 
 **Assertions (Headless, verbatim): 24/24 PASS**, 14/14 Interaktionsregression, 0 Konsolen-Fehler.
 
-## 22. Files touched
+## 22. Merge — `origin/main` (Produktionssystem) in den 3D-Branch, 0 % Verlust
 
-- `index.html` — module script (rendering pipeline + scene content) + nothing else in the file
+Zusammenführung des kompletten technischen Produktionssystems aus `main` (Supabase-Auth,
+Stripe-Zahlungen, Credits, Moderation, Domain kommilo.app, PWA) mit der 3D-Optik dieses Branches.
+
+- **Divergenz:** gemeinsame Basis `d320be3`. `main` = Basis + Technik (Supabase-Auth `SUPA`/
+  `signInWithOtp`/`verifyOtp`, Domainwechsel github.io→kommilo.app, `CNAME`, Build 23). Dieser
+  Branch = Basis + kompletter 3D-Overhaul. Zahlungen/Credits/Moderation lagen bereits in der Basis.
+- **Konflikt:** genau EINE Region in `index.html` — der 3D-Kulissenblock. `ours` = mein R11-Campus
+  (Altgebäude/Okerhochhaus/Audimax/Platz), `theirs` = die ALTEN Vor-Overhaul-Bauten (`A`,`hh`,
+  `Kinzig K`). 100 % 3D-Code, keinerlei App-Logik auf `theirs` (0 Tech-Anker in 175 Zeilen).
+  Beide Seiten deklarieren `const hh` → beide behalten wäre Redeclaration-SyntaxError + überlappende
+  Geometrie. Regelkonform (Visuell → mein Branch gewinnt): **meine Seite behalten**, alte Bauten
+  verworfen. Mein Campus ist Superset (enthält alles, was `theirs` hatte, plus Audimax/Platz).
+- **Technik unangetastet aus `main` übernommen** (auto-merge, kein Konflikt): Supabase-Auth (mit
+  EmailJS-Fallback), `KOMMILO_PAY`/`payFlow`/`buyPack`/`claimCredits`, `PRICING.CREDIT_PACKS`/
+  `creditSpend`/`creditShop`, `MOD_LEX`/`modCheck`/`modStrike`/18h-Ban, kommilo.app-URLs (Head:
+  canonical/og/twitter/JSON-LD/SEO-h1), `DEFAULT_DB`/`loadDB`. `CNAME`, `sitemap.xml` unverändert
+  aus `main`. Supabase-Import ist per `try/catch(()=>{})` abgesichert → Boot bleibt fehlerfrei,
+  wenn das CDN geblockt ist.
+- **Build-Stempel:** HUD `Build 23`→`Build 24`; `sw.js` Cache `wlt-v23`→`wlt-v24` (Clients holen
+  frisch).
+
+**Verifikation (9/9 grün):** `node --check` 0 Fehler · Boot `window.__ok=true` + `window.__kommilo3d`
++ Campus rendert, 0 echte Konsolenfehler (nur Sandbox-Egress-Blocks) · Auth `signInWithOtp`+
+`verifyOtp`+`SUPA.key` vorhanden · Zahlungen `KOMMILO_PAY.checkout`+`payFlow`+`buyPack`+
+`claimCredits` · Credits `CREDIT_PACKS`+`creditSpend`+`creditShop` · Moderation `modCheck`+
+`modStrike`+18h-Gate · Domain: 0× github.io, alle Head-URLs kommilo.app, `CNAME` unverändert ·
+3D-Pipeline aktiv (Sky/IBL/PMREM/Composer/PBR) + verifySitePlan **24/24 PASS** · Build 24.
+
+## 23. Files touched
+
+- `index.html` — module script (rendering pipeline + scene content) + merged production system
+- `sw.js` — cache version bumped to `wlt-v24` (rest from `main`)
+- `CNAME`, `sitemap.xml` — from `main` (unchanged)
 - `docs/3d-overhaul.md` — this document

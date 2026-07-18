@@ -12,19 +12,19 @@
 <meta name="apple-mobile-web-app-title" content="Kommilo">
 <script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js'))}</script>
 <meta name="description" content="Kommilo: Finde Lernpartner und Lerngruppen im 3D-Studierendenhaus der TU Braunschweig. Nur mit Uni-E-Mail, faire Regeln, Credits statt Abo, internationale Uni-Verbindungen — kein Dating, nur Lernen.">
-<link rel="canonical" href="https://sam010-aio.github.io/we-learn-together-/">
+<link rel="canonical" href="https://kommilo.app/">
 <meta name="robots" content="index,follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Kommilo">
 <meta property="og:title" content="Kommilo — Lernpartner & Lerngruppen an der TU Braunschweig">
 <meta property="og:description" content="Der 3D Study Campus: Tische im Studierendenhaus, echte Lerngruppen, Lernpartner-Matching mit Uni-E-Mail. Credits ab 0,99 €, kein Abo.">
-<meta property="og:url" content="https://sam010-aio.github.io/we-learn-together-/">
-<meta property="og:image" content="https://sam010-aio.github.io/we-learn-together-/icon-512.png">
+<meta property="og:url" content="https://kommilo.app/">
+<meta property="og:image" content="https://kommilo.app/icon-512.png">
 <meta property="og:locale" content="de_DE">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kommilo — Study Campus TU Braunschweig">
 <meta name="twitter:description" content="Lernpartner & Lerngruppen im 3D-Studierendenhaus finden. Nur mit Uni-E-Mail.">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Kommilo","alternateName":"Seatmate","url":"https://sam010-aio.github.io/we-learn-together-/","applicationCategory":"EducationalApplication","operatingSystem":"Web","inLanguage":"de","description":"3D-Lernplattform der TU Braunschweig: Lernpartner finden, Lerngruppen an echten Tischen im Studierendenhaus gründen, internationale Uni-Verbindungen. Registrierung nur mit Uni-E-Mail.","offers":{"@type":"Offer","price":"0.99","priceCurrency":"EUR","description":"Credit-Pakete ab 0,99 €, erstes Match kostenlos, kein Abo"},"audience":{"@type":"EducationalAudience","educationalRole":"student"},"creator":{"@type":"Person","name":"Sam"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Kommilo","alternateName":"Seatmate","url":"https://kommilo.app/","applicationCategory":"EducationalApplication","operatingSystem":"Web","inLanguage":"de","description":"3D-Lernplattform der TU Braunschweig: Lernpartner finden, Lerngruppen an echten Tischen im Studierendenhaus gründen, internationale Uni-Verbindungen. Registrierung nur mit Uni-E-Mail.","offers":{"@type":"Offer","price":"0.99","priceCurrency":"EUR","description":"Credit-Pakete ab 0,99 €, erstes Match kostenlos, kein Abo"},"audience":{"@type":"EducationalAudience","educationalRole":"student"},"creator":{"@type":"Person","name":"Sam"}}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{font-family:'Plus Jakarta Sans','Segoe UI',system-ui,sans-serif}
@@ -2004,6 +2004,10 @@ document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id===
 const KOMMILO_PAY={
  checkout:'https://fizngpiywybwxrxwmqmx.supabase.co/functions/v1/create-checkout',
  credits:'https://fizngpiywybwxrxwmqmx.supabase.co/functions/v1/my-credits' }
+const SUPA={ url:'https://fizngpiywybwxrxwmqmx.supabase.co', key:'sb_publishable_bTueFt0eovhkQ1fjuk_fKQ_xLGcnR-l' }
+window.__sb=null
+try{ import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm')
+  .then(m=>{ window.__sb=m.createClient(SUPA.url,SUPA.key) }).catch(()=>{}) }catch(e){}
 const PRICING={ CREDIT_PACKS:[{n:5,cents:99},{n:10,cents:189},{n:15,cents:229,rec:true}], INTL_CREDITS:5,
  LOCAL_MATCH_DEPOSIT_CENTS:25, GROUP_CREATE_DEPOSIT_CENTS:25, GROUP_JOIN_DEPOSIT_CENTS:25, INTERNATIONAL_CONNECTION_PRICE_CENTS:200, CURRENCY:'EUR' }
 const BLOCKED_DOMAINS=['gmail.com','googlemail.com','outlook.com','hotmail.com','live.com','yahoo.com','icloud.com','proton.me','protonmail.com','gmx.de','web.de','t-online.de','aol.com']
@@ -2487,12 +2491,27 @@ const actions={
    if(!uni2.domains.some(d=>dom===d||dom.endsWith('.'+d))){ err.innerHTML='Die E-Mail-Domain passt nicht zur ausgewählten Hochschule ('+uni2.domains.join(', ')+').'; return }
    DB.user.registered=true; DB.user.email=email; DB.user.profile.universityId=uniId
    DB.user.profile.countryId=uni2.country; DB.user.profile.city=uni2.city
+   DB.user._authMode=''
+   if(window.__sb){ DB.user._authMode='sb'; DB.user._mailState='sending'; saveDB(); render()
+     window.__sb.auth.signInWithOtp({email,options:{shouldCreateUser:true}}).then(r=>{
+       if(r.error){ DB.user._authMode=''; DB.user._mailErr='Auth: '+String(r.error.message||'').slice(0,160)
+         DB.user._code=String(1000+Math.floor(Math.random()*9000))
+         if(emailConfigured()) sendRealEmail(email,DB.user._code,ok=>{ DB.user._mailState=ok?'sent':'failed'; saveDB(); render() })
+         else { DB.user._mailState='dev'; saveDB(); render() } }
+       else { DB.user._mailState='sent'; saveDB(); render()
+         toast('Code an dein Postfach gesendet','Schau in dein Uni-Postfach (auch Spam) — 6-stelliger Code.') } }) }
+   else { DB.user._code=String(1000+Math.floor(Math.random()*9000))
+     if(emailConfigured()){ DB.user._mailState='sending'; saveDB(); render()
+       sendRealEmail(email,DB.user._code,ok=>{ DB.user._mailState=ok?'sent':'failed'; saveDB(); render() }) }
+     else { DB.user._mailState='dev'; devEmail('E-Mail bestätigen',email); saveDB(); render() } } },
+ obResend(){ const email=DB.user.email
+   if(DB.user._authMode==='sb'&&window.__sb){ DB.user._mailState='sending'; saveDB(); render()
+     window.__sb.auth.signInWithOtp({email,options:{shouldCreateUser:true}}).then(r=>{
+       if(r.error){ DB.user._mailState='failed'; DB.user._mailErr='Auth: '+String(r.error.message||'').slice(0,160) }
+       else DB.user._mailState='sent'
+       saveDB(); render() })
+     return }
    DB.user._code=String(1000+Math.floor(Math.random()*9000))
-   if(emailConfigured()){ DB.user._mailState='sending'; saveDB(); render()
-     sendRealEmail(email,DB.user._code,ok=>{ DB.user._mailState=ok?'sent':'failed'; saveDB(); render()
-       toast(ok?'Code an dein Postfach gesendet':'Versand fehlgeschlagen','ok'===('ok')&&ok?'Schau in dein Uni-Postfach (auch Spam).':'Der Code wird stattdessen hier angezeigt.',ok?'success':'info') }) }
-   else { DB.user._mailState='dev'; devEmail('E-Mail bestätigen',email); saveDB(); render() } },
- obResend(){ DB.user._code=String(1000+Math.floor(Math.random()*9000))
    if(emailConfigured()){ DB.user._mailState='sending'; saveDB(); render()
      sendRealEmail(DB.user.email,DB.user._code,ok=>{ DB.user._mailState=ok?'sent':'failed'; saveDB(); render() }) }
    else { DB.user._mailState='dev'; saveDB(); render() } },
@@ -2527,6 +2546,17 @@ const actions={
    saveDB(); closeModal(); notify('Hochschule eingereicht','Status: pending_review — nur Plattform-Admins geben Hochschulen frei.','uni')
    toast('Danke!','Deine Hochschule wird geprüft (pending_review).') },
  obVerify(){ const v=(document.getElementById('ob-code').value||'').trim()
+   if(DB.user._authMode==='sb'&&window.__sb){
+     if(!/^\d{6}$/.test(v)){ document.getElementById('ob-err').textContent='Bitte den 6-stelligen Code aus der E-Mail eingeben.'; return }
+     const btn=document.getElementById('ob-vbtn'); if(btn){ btn.disabled=true; btn.textContent='Prüfe …' }
+     window.__sb.auth.verifyOtp({email:DB.user.email,token:v,type:'email'}).then(res=>{
+       if(res.error||!res.data||!res.data.user){ if(btn){ btn.disabled=false; btn.textContent='Bestätigen' }
+         document.getElementById('ob-err').textContent='Code stimmt nicht oder ist abgelaufen — bitte „Code erneut senden".'; return }
+       DB.user.emailVerified=true; saveDB()
+       try{ window.__sb.from('profiles').upsert({id:res.data.user.id,uni_email:String(DB.user.email||'').toLowerCase()}).then(()=>{}) }catch(e){}
+       toast('Konto bestätigt ✓','Dein Kommilo-Konto ist serverseitig gesichert.')
+       render() })
+     return }
    if(v!==DB.user._code){ document.getElementById('ob-err').textContent='Code stimmt nicht. (DEV-Hinweis: Der Code steht oben.)'; return }
    DB.user.emailVerified=true; saveDB(); render() },
  obConsent(){ const c=id=>document.getElementById(id).checked
@@ -2928,9 +2958,9 @@ function gateHTML(g){ const u=DB.user
    '<button class="btn grad w" onclick="actions.mailSetup()">📬 E-Mail-Versand jetzt verbinden (3 Min)</button>'
   return gateWrap('E-Mail bestätigen',
   '<h2>Bestätige deine E-Mail</h2><p>Bestätigungscode für <b>'+esc(u.email)+'</b>:</p>'+info+
-  '<label>Bestätigungscode</label><input id="ob-code" placeholder="4-stelliger Code">'+
+  '<label>Bestätigungscode</label><input id="ob-code" inputmode="numeric" placeholder="'+(u._authMode==='sb'?'6-stelliger Code aus der E-Mail':'4-stelliger Code')+'">'+
   '<div class="mrow"><button class="btn ghost" onclick="actions.obResend()">Code erneut senden</button>'+
-  '<button class="btn grad" onclick="actions.obVerify()">Bestätigen</button></div>') }
+  '<button class="btn grad" id="ob-vbtn" onclick="actions.obVerify()">Bestätigen</button></div>') }
  if(g==='consent') return gateWrap('Einverständnis',
   '<h2>Datenschutz, AGB & Lernzweck</h2>'+
   '<label style="display:flex;gap:8px;font-weight:600;font-size:12.5px;margin:8px 0"><input type="checkbox" id="cb-p" style="width:auto"> Ich akzeptiere die <a href="#" onclick="actions.legal(\'privacy\');return false">Datenschutzhinweise</a>.</label>'+
@@ -3004,7 +3034,7 @@ const HUD={
   '<div class="stats br"><div class="stat"><b style="color:#6366F1">'+gg.length+'</b><span>Lerngruppen</span></div>'+
   '<div class="stat"><b style="color:#8B5CF6">'+DB.matches.length+'</b><span>Matches</span></div>'+
   '<div class="stat"><b style="color:#4F46E5">'+state.invitations.length+'</b><span>Einladungen</span></div></div>'+
-  '<div class="chiph bl">Ziehen = drehen · Scrollen = zoomen · <b>Build 19</b></div>' },
+  '<div class="chiph bl">Ziehen = drehen · Scrollen = zoomen · <b>Build 24</b></div>' },
  partner(){ const left=credits()
   return '<div class="card tl" style="max-width:410px"><div class="eyebrow">Lernpartner finden</div><h2>Setz dich dazu</h2>'+
   '<p>Kommiliton:innen sitzen allein am Tisch — der Stuhl daneben ist frei. Klicke einen Tisch für eine <b>Lern-Einladung</b> (kein Dating, kein Swipe). Oder öffne selbst einen freien 2er-Tisch und warte auf Anfragen.</p>'+
