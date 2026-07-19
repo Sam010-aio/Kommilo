@@ -265,7 +265,7 @@ const F1=F0+CLEAR+SLAB, CEIL1=F1+CLEAR, ROOF_TOP=CEIL1+.28, BAL=2.2, OV=3.1, ATR
    ============================================================================ */
 const sceneConfig = {
   renderer: {
-    maxPixelRatio: 2,          // brief: clamp devicePixelRatio to 2; quality tiers may lower it
+    maxPixelRatio: 1.25,       // Sec5B: hard DPR clamp min(devicePixelRatio,1.25) on every tier — fill-rate is the dominant cost on iGPUs (Potato lowers further to 1.0)
     anisotropy: 8,             // texture sharpness at grazing angles (grass, pavers)
     envPrewarmMs: 2500,        // idle delay before pre-baking the night IBL — avoids a hitch on first mode toggle
   },
@@ -282,10 +282,13 @@ const sceneConfig = {
   quality: {                   // LIGHTNESS RESCUE Ph2: 4 gerätebewusste Stufen (Anzeigenamen ↔ interne Keys)
     /* Anzeige: High↔high · Balanced↔medium · Light↔low · Potato↔potato. shadows=false schaltet den
        kompletten Schattenpass ab (größter Gewinn auf schwächster HW). aoHalfRes: AO auf halber Auflösung. */
-    high:   { pixelRatio: 2,    shadowMap: 2048, shadows: true,  ao: true,  aoHalfRes: true,  smaa: true  }, // dGPU/Apple-Silicon Desktop
-    medium: { pixelRatio: 1.5,  shadowMap: 1536, shadows: true,  ao: true,  aoHalfRes: true,  smaa: true  }, // Balanced: Intel-iGPU/unbekannt Desktop (Schatten 1536, DPR ≤ 1.75 laut Spec)
-    low:    { pixelRatio: 1.25, shadowMap: 1024, shadows: true,  ao: false, aoHalfRes: true,  smaa: false }, // Light: Handys default (Ziel 30 fps)
-    potato: { pixelRatio: 1.0,  shadowMap: 512,  shadows: false, ao: false, aoHalfRes: true,  smaa: false }, // Notnetz: Software-GL/sehr schwach — Schatten AUS, DPR 1
+    /* post: die volle Post-Kette (GTAO+Bloom+SMAA+Vignette) läuft NUR auf High (Sec5B/§5 „post off by default").
+       Balanced/Light/Potato rendern direkt (renderer.render) — Tonemapping/sRGB liegen am Renderer, Antialiasing
+       macht MSAA (antialias:true) → kein Vollbild-Postpass, spart Füllrate ohne Farb-/Kantenregression. */
+    high:   { pixelRatio: 2,    shadowMap: 2048, shadows: true,  ao: true,  aoHalfRes: true,  smaa: true,  post: true  }, // dGPU/Apple-Silicon Desktop
+    medium: { pixelRatio: 1.5,  shadowMap: 1536, shadows: true,  ao: false, aoHalfRes: true,  smaa: false, post: false }, // Balanced: Intel-iGPU/unbekannt Desktop — Post aus
+    low:    { pixelRatio: 1.25, shadowMap: 1024, shadows: true,  ao: false, aoHalfRes: true,  smaa: false, post: false }, // Light: Handys default (Ziel 30 fps)
+    potato: { pixelRatio: 1.0,  shadowMap: 512,  shadows: false, ao: false, aoHalfRes: true,  smaa: false, post: false }, // Notnetz: Software-GL/sehr schwach — Schatten AUS, DPR 1
     fpsDrop: 45,               // sustained fps below this → drop one tier
     fpsRaise: 57,              // sustained fps above this → raise one tier (with hysteresis)
     windowSec: 3,              // seconds of fps averaging before a tier decision
@@ -3479,7 +3482,7 @@ renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
   let _gpuActive=false
   if(DEBUG_PERF&&_gpuExt&&!_gpuPending){ try{ const gl=renderer.getContext()
     if(!_gpuQ) _gpuQ=gl.createQuery(); gl.beginQuery(_gpuExt.TIME_ELAPSED_EXT,_gpuQ); _gpuActive=true }catch(e){ _gpuActive=false } }
-  if(sc===scene&&composer&&state.settings.effects){ composer.render() } else { renderer.render(sc,camera) }
+  if(sc===scene&&composer&&state.settings.effects&&sceneConfig.quality[qualityTier].post){ composer.render() } else { renderer.render(sc,camera) } // Sec5B: Post-Kette nur auf High
   if(_gpuActive){ try{ renderer.getContext().endQuery(_gpuExt.TIME_ELAPSED_EXT); _gpuPending=true }catch(e){ _gpuPending=false } }
   if(DEBUG_PERF){ const _t3=performance.now()
     _tCtrl+=((_t1-_t0)-_tCtrl)*.1; _tUpd+=((_t2-_t1)-_tUpd)*.1; _tRender+=((_t3-_t2)-_tRender)*.1
@@ -3598,7 +3601,7 @@ window.__kommilo3d={ config:sceneConfig, applyMode, setQualityTier, tier:()=>qua
       setQualityTier(qualityTier) },
     /* synchroner Median-Probe: n Renders des aktuellen Pfads, Median-CPU-ms + Calls/Tris — EMA-frei,
        damit A/B unter SwiftShader (~0.4 fps) verlässlich ist. Nutzt die Post-Kette, wenn Effekte an sind. */
-    probe:(n)=>{ n=n||3; const ts=[]; const useC=current()===scene&&composer&&state.settings.effects
+    probe:(n)=>{ n=n||3; const ts=[]; const useC=current()===scene&&composer&&state.settings.effects&&sceneConfig.quality[qualityTier].post
       let calls=0,tris=0; const a=renderer.info.autoReset; renderer.info.autoReset=false
       for(let i=0;i<n;i++){ renderer.info.reset(); renderer.shadowMap.needsUpdate=true; const t0=performance.now()
         if(useC) composer.render(); else renderer.render(scene,camera); ts.push(performance.now()-t0)
