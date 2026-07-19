@@ -455,11 +455,18 @@ const controls = new OrbitControls(camera, renderer.domElement)
 /* „Wind"-Feel: sofortige Reaktion + weiches Nachgleiten (~0.6–0.9 s) nach dem Loslassen */
 controls.enableDamping = true; controls.dampingFactor = sceneConfig.camera.damping   // 0.06
 controls.autoRotate = true; controls.autoRotateSpeed = .3
-controls.minDistance = 3; controls.maxDistance = 130; controls.maxPolarAngle = Math.PI * .495 // nie unter den Boden/kippen
+controls.minDistance = 3; controls.maxDistance = 130; controls.maxPolarAngle = 1.54 // Sec8: nie unter den Boden/kippen (≈88°)
 controls.rotateSpeed = .9; controls.panSpeed = .9; controls.zoomSpeed = .8
 controls.zoomToCursor = true                                                          // Welt fließt zum Zeiger
 controls.domElement.style.touchAction = 'none'                                        // Ph5: Browser-Touch-Gesten (Scroll/Zoom) NICHT gegen OrbitControls kämpfen lassen
 let lastInteract = -9999, boostOn = false, boostOffAt = Infinity                       // Ph3 Interaction-Boost-Zustand
+/* ===== On-Demand-Rendering: die Szene ist überwiegend statisch → nur rendern, wenn sich etwas ändert.
+   'change' feuert OrbitControls bei jeder echten Kamerabewegung (Ziehen/Zoom/Pan/Damping-Ausklang/
+   Auto-Rotate). invalidate() fordert genau einen weiteren gerenderten Frame an; alle nicht-kamera-
+   bezogenen Änderungen (Preset, Sektion, Auswahl, Resize, GLB) rufen es explizit. ===== */
+let renderNeeded = true
+function invalidate(){ renderNeeded = true }
+controls.addEventListener('change', invalidate)
 /* Ph3: aktives Ziehen/Zoomen → sofort DPR senken + AO aus (applyBoost weiter unten definiert, gehoisted) */
 controls.addEventListener('start', () => { controls.autoRotate = false; lastInteract = performance.now()
   boostOffAt = Infinity; if(!boostOn){ boostOn = true; applyBoost(true) } })
@@ -2412,7 +2419,7 @@ const actions={
  uni(id){ state.uniId=id; state.selected=null; rebuildTables(); syncScene(); render() },
  mode(m){ state.mode=m; applyMode(); render() },
  bell(){ openNotifCenter() },
- set(k,v){ state.settings[k]=v; render() },
+ set(k,v){ state.settings[k]=v; render(); invalidate() },   // On-Demand: Einstellungswechsel (z. B. Effekte) einen 3D-Frame anfordern
  save(){ toast('Einstellungen gespeichert','Alles bleibt für diese Session aktiv.'); if(state.settings.glb) loadGlb(state.settings.glb) },
  connect(pid){ if(guardBlock())return
    const p=state.partners.find(x=>x.id===pid); if(!p||p.req) return
@@ -2983,7 +2990,8 @@ function applyMode(){ const night=state.mode==='nacht'
   wu.distortionScale.value=mc.water.distortion; wu.sunDirection.value.copy(SUNV)
   scene.environment=envFor(night?'nacht':'tag')
   scene.environmentIntensity=mc.envIntensity
-  scene.fog.color.set(mc.fog.color); scene.fog.density=mc.fog.density }
+  scene.fog.color.set(mc.fog.color); scene.fog.density=mc.fog.density
+  invalidate() }   // On-Demand: Preset ändert Licht/Himmel/Wasser ohne Kamerabewegung → einen Frame anfordern
 const partnerGroup=new THREE.Group(); partnerGroup.visible=false; scene.add(partnerGroup)
 const partnerTargets=[]
 function partnerTable(p,x,z,ry,i){
@@ -3042,14 +3050,15 @@ function syncScene(){ const c=CAMS[state.section]||CAMS.amb
   const gen=uni().building==='gen'&&state.section==='gruppen'
   genericGroup.visible=gen; buildingGroup.visible=!gen||state.section!=='gruppen'
   if(gen){ buildingGroup.visible=false; controls.target.set(0,2,30); camera.position.set(22,9,58) }
-  else buildingGroup.visible=!(glbGroup&&glbGroup.visible) }
+  else buildingGroup.visible=!(glbGroup&&glbGroup.visible)
+  invalidate() }   // On-Demand: Sektionswechsel setzt Kamera/Sichtbarkeit direkt (kein 'change') → einen Frame anfordern
 let glbGroup=null
 function loadGlb(url){ new GLTFLoader().load(url,g=>{ if(glbGroup) scene.remove(glbGroup)
     glbGroup=g.scene; glbGroup.traverse(o=>{ if(o.isMesh){o.castShadow=true;o.receiveShadow=true} })
     const box=new THREE.Box3().setFromObject(glbGroup); const size=box.getSize(new THREE.Vector3()); const cen=box.getCenter(new THREE.Vector3())
     const md=Math.max(size.x,size.z)||1; const sc=(md>200||md<2)?40/md:1
     glbGroup.scale.setScalar(sc); glbGroup.position.sub(cen.multiplyScalar(sc)); glbGroup.position.y-=box.min.y*sc-.02
-    buildingGroup.visible=false; scene.add(glbGroup); toast('Echter 3D-Scan geladen','Er ersetzt jetzt das prozedurale Gebäude.')
+    buildingGroup.visible=false; scene.add(glbGroup); invalidate(); toast('Echter 3D-Scan geladen','Er ersetzt jetzt das prozedurale Gebäude.')
   },undefined,()=>toast('Scan konnte nicht geladen werden','URL prüfen (.glb, CORS).','info')) }
 
 /* ---------- UI-Helfer, Gates, Notification-Center, Chat ---------- */
@@ -3303,7 +3312,8 @@ actions.decline=function(iid){ const i=state.invitations.find(x=>x.id===iid); st
 
 const rayc=new THREE.Raycaster(), mouseV=new THREE.Vector2()
 let downAt=null
-renderer.domElement.addEventListener('pointerdown',e=>{ downAt=[e.clientX,e.clientY] })
+renderer.domElement.addEventListener('pointerdown',e=>{ downAt=[e.clientX,e.clientY]
+  lastInteract=performance.now(); invalidate() })   // On-Demand: Tap/Klick (auch Tisch-Auswahl ohne Kamerabewegung) hält 5 s wach
 renderer.domElement.addEventListener('pointerup',e=>{
   if(!downAt||Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])>6) return
   if(state.section!=='gruppen'&&state.section!=='partner'&&state.section!=='international') return
@@ -3344,7 +3354,7 @@ function updateLabels(){
       : '<div class="tlabel free" style="left:'+x+'px;top:'+y+'px"><b>+ Gruppe gründen</b></div>' })
   labelLayer.innerHTML=html }
 addEventListener('resize',()=>{ camera.aspect=(innerWidth-264)/(innerHeight-64); camera.updateProjectionMatrix()
-  renderer.setSize(innerWidth-264,innerHeight-64); if(composer){ composer.setSize(innerWidth-264,innerHeight-64); applyAoSize() } })
+  renderer.setSize(innerWidth-264,innerHeight-64); if(composer){ composer.setSize(innerWidth-264,innerHeight-64); applyAoSize() } invalidate() })
 renderer.setSize(innerWidth-264,innerHeight-64); camera.aspect=(innerWidth-264)/(innerHeight-64); camera.updateProjectionMatrix()
 if(composer){ composer.setSize(innerWidth-264,innerHeight-64); applyAoSize() }
 const appClock=new THREE.Clock()
@@ -3394,7 +3404,7 @@ function debugTick(dt, tNow){ const ms=dt*1000
   const gpu=_gpuMs>=0?_gpuMs.toFixed(1)+'ms':'n/a'
   window.__perf={ fps:+_fpsEMA.toFixed(0), ms:+_msEMA.toFixed(1), p95:+_p95().toFixed(1),
     ctrl:+_tCtrl.toFixed(2), upd:+_tUpd.toFixed(2), render:+_tRender.toFixed(2), gpuMs:_gpuMs,
-    calls:_dbgCalls, tris:_dbgTris, dpr:+renderer.getPixelRatio().toFixed(2), tier:qualityTier, gpu:GPU_RENDERER, build:b.id }
+    calls:_dbgCalls, tris:_dbgTris, dpr:+renderer.getPixelRatio().toFixed(2), tier:qualityTier, gpu:GPU_RENDERER, build:b.id, idle:false }
   _dbgEl.textContent=
     'FPS '+window.__perf.fps+'   '+window.__perf.ms+' ms   p95 '+window.__perf.p95+'\n'+
     'CPU  ctrl '+window.__perf.ctrl+'  upd '+window.__perf.upd+'  rndr '+window.__perf.render+' ms\n'+
@@ -3415,23 +3425,41 @@ function warmUpTick(t,dt){ if(warmUp.done) return
 }
 renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
   const dt=t-lastT; lastT=t
-  if(DEBUG_PERF){ renderer.info.autoReset=false; renderer.info.reset() } // Calls über Szene+Postpässe akkumulieren
   const _t0 = DEBUG_PERF ? performance.now() : 0        // Sec3: CPU-Phasen-Profiling (nur bei ?debug=perf)
-  controls.update(dt)                                    // Delta → framerate-unabhängiges „Wind"-Damping
+  controls.update(dt)                                    // Delta → framerate-unabhängiges „Wind"-Damping; feuert 'change' bei echter Bewegung → invalidate
   const _t1 = DEBUG_PERF ? performance.now() : 0
-  if(boostOn && performance.now()>=boostOffAt){ boostOn=false; boostOffAt=Infinity; applyBoost(false) } // Ph3: entprellt zurückblenden
+  if(boostOn && performance.now()>=boostOffAt){ boostOn=false; boostOffAt=Infinity; applyBoost(false); renderNeeded=true } // Ph3: entprellt zurückblenden
+  /* Sec8: Kamera nie unter den Boden — jeden Frame nach controls.update klemmen (auch auf übersprungenen Frames) */
+  if(camera.position.y<0.6) camera.position.y=0.6
+  if(controls.target.y<0) controls.target.y=0
   const sc=current()
+  const idleFor=performance.now()-lastInteract, interacting=idleFor<5000
+  /* Leerlauf-AutoRotate (Campus/Partner) VOR dem Gate: nach ~5 s Ruhe wieder sanft drehen → zählt als „Animation aktiv" und rendert weiter. */
+  if(sc===scene && !controls.autoRotate && !interacting && (state.section==='campus'||state.section==='partner')) controls.autoRotate=true
+  /* ===== On-Demand-Gate: nur rendern, wenn sich wirklich etwas ändert (größter Leerlauf-Gewinn) =====
+     Wach bei: Kamerabewegung ('change'→renderNeeded), animierender Themenwelt, Benchmark/Warm-up,
+     aktivem Ziehen (Boost), kürzlicher Eingabe (<5 s) oder Auto-Rotate. Sonst Leerlauf → GPU ~0. */
+  if(sc!==scene) renderNeeded=true                                   // Themenwelten (Globus/Zahnräder/…) animieren jeden Frame
+  if(BENCH&&sc===scene) renderNeeded=true                            // Benchmark bewegt die Kamera direkt (feuert kein 'change')
+  if(sc===scene && !warmUp.done) renderNeeded=true                   // 1-s-Warm-up-Probe braucht Frames
+  if(boostOn || controls.autoRotate || (sc===scene && interacting)) renderNeeded=true
+  if(document.hidden) return                                         // 5F: Tab verdeckt/hintergründig → gar nicht rendern
+  if(!renderNeeded){                                                 // ————— LEERLAUF: kein GPU-Render, keine Szene-Updates —————
+    if(DEBUG_PERF){ _dbgAcc+=dt; if(_dbgAcc>=.25){ _dbgAcc=0; _dbgCalls=0; _dbgTris=0
+      if(window.__perf){ window.__perf.calls=0; window.__perf.render=0; window.__perf.idle=true }
+      _dbgEl.textContent='⏸ on-demand IDLE — 0 draw calls\nDPR '+renderer.getPixelRatio().toFixed(2)+'   Tier '+(sceneConfig.quality.display[qualityTier]||qualityTier)+(_qOvr?' (?quality)':'')+'\nBuild v'+window.__BUILD.id } }
+    return }
+  renderNeeded=false                                                 // Frame WIRD gerendert → Flag verbrauchen
+  if(DEBUG_PERF){ renderer.info.autoReset=false; renderer.info.reset() } // Calls über Szene+Postpässe akkumulieren
   if(BENCH&&sc===scene) benchStep(t,dt)
   if(sc===scene) warmUpTick(t,dt)
-  /* Perf-Pass: bewegte Schatten (Foliage/Figuren) alle 3 Frames aktualisieren — statische Gebäude
+  /* Perf-Pass: bewegte Schatten (Foliage/Figuren) alle 3 gerenderten Frames aktualisieren — statische Gebäude
      kosten so nichts, lebendige Schatten bleiben; autoUpdate ist aus (needsUpdate wird konsumiert).
      Ph3: während des Boosts (aktives Ziehen) Schatten einfrieren — frei nach dem Loslassen wieder live. */
   if(sc===scene && !boostOn && (frameN++ %3===0)) renderer.shadowMap.needsUpdate=true
-  /* Leerlauf-Drift (Atmen + AutoRotate) weicht SOFORT der Eingabe und blendet nach ~5 s Ruhe zurück */
-  const idleFor=performance.now()-lastInteract, interacting=idleFor<5000
+  /* Leerlauf-Atmen: nur auf gerenderten Frames (verhindert unsichtbare Kamera-Drift im Leerlauf) */
   if(sc===scene){ const b=Math.sin(t*sceneConfig.camera.breatheSpeed*Math.PI*2)*sceneConfig.camera.breatheAmp
-    if(!interacting) camera.position.y+=b-breathePrev; breathePrev=b   // Delta läuft weiter → kein Sprung beim Zurückblenden
-    if(!controls.autoRotate && !interacting && (state.section==='campus'||state.section==='partner')) controls.autoRotate=true }
+    if(!interacting) camera.position.y+=b-breathePrev; breathePrev=b }   // Delta läuft weiter → kein Sprung beim Zurückblenden
   if(sc===ambScene) ambShapes.forEach(sh=>{ sh.position.y=sh.userData.y0+Math.sin(t*sh.userData.sp+sh.userData.ph)*.45; sh.rotation.x+=.001*sh.userData.sp*3; sh.rotation.y+=.0014*sh.userData.sp*3 })
   if(sc===globeScene){ globeGroup.rotation.y+=.0008; arcs.forEach(a=>{ const k=(t*.14+a.off)%1; a.dot.position.copy(a.curve.getPoint(k)) }) }
   if(sc===avScene){ avTurn.rotation.y+=.008; avTurn.position.y=Math.sin(t*1.4)*.012 }
@@ -3445,7 +3473,7 @@ renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
     windUniform.value=t*sceneConfig.wind.speed                 // Wind/Wasser bleiben (billige Shader-Uniforms)
     if(!boostOn) updateLife(t)                                 // Ph3: CPU-Figuren-Posing während des Ziehens pausieren
     water.material.uniforms.time.value=t*sceneConfig.water.flowSpeed }
-  perfTick(dt) // auf ALLEN Render-Pfaden messen — auch Themenwelten/Effekte-aus müssen DPR-Stufen abwerfen können
+  perfTick(dt) // nur gerenderte Frames werten — die DPR-Stufe folgt der echten Render-Last
   const _t2 = DEBUG_PERF ? performance.now() : 0        // Sec3: Render-Phase abgrenzen
   /* Sec3 GPU-Timer (best-effort, hart geguarded — bricht headless/ohne Ext NICHT): TIME_ELAPSED um den Render */
   let _gpuActive=false
