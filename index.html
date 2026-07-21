@@ -285,10 +285,12 @@ const sceneConfig = {
     /* post: die volle Post-Kette (GTAO+Bloom+SMAA+Vignette) läuft NUR auf High (Sec5B/§5 „post off by default").
        Balanced/Light/Potato rendern direkt (renderer.render) — Tonemapping/sRGB liegen am Renderer, Antialiasing
        macht MSAA (antialias:true) → kein Vollbild-Postpass, spart Füllrate ohne Farb-/Kantenregression. */
-    high:   { pixelRatio: 2,    shadowMap: 2048, shadows: true,  ao: true,  aoHalfRes: true,  smaa: true,  post: true  }, // dGPU/Apple-Silicon Desktop
-    medium: { pixelRatio: 1.5,  shadowMap: 1536, shadows: true,  ao: false, aoHalfRes: true,  smaa: false, post: false }, // Balanced: Intel-iGPU/unbekannt Desktop — Post aus
-    low:    { pixelRatio: 1.25, shadowMap: 1024, shadows: true,  ao: false, aoHalfRes: true,  smaa: false, post: false }, // Light: Handys default (Ziel 30 fps)
-    potato: { pixelRatio: 1.0,  shadowMap: 512,  shadows: false, ao: false, aoHalfRes: true,  smaa: false, post: false }, // Notnetz: Software-GL/sehr schwach — Schatten AUS, DPR 1
+    /* grass: Anteil des 42k-Gras-Feldes je Stufe — die größte Einzel-Vertex-Last; auf schwächeren
+       Stufen ausgedünnt (entlastet AUCH Dauer-Render/AutoRotate, nicht nur die Geste via Nav-LOD). */
+    high:   { pixelRatio: 2,    shadowMap: 2048, shadows: true,  ao: true,  aoHalfRes: true,  smaa: true,  post: true,  grass: 1    }, // dGPU/Apple-Silicon Desktop
+    medium: { pixelRatio: 1.5,  shadowMap: 1536, shadows: true,  ao: false, aoHalfRes: true,  smaa: false, post: false, grass: .55  }, // Balanced: Intel-iGPU/unbekannt Desktop — Post aus
+    low:    { pixelRatio: 1.25, shadowMap: 1024, shadows: true,  ao: false, aoHalfRes: true,  smaa: false, post: false, grass: .3   }, // Light: Handys default (Ziel 30 fps)
+    potato: { pixelRatio: 1.0,  shadowMap: 512,  shadows: false, ao: false, aoHalfRes: true,  smaa: false, post: false, grass: .12  }, // Notnetz: Software-GL/sehr schwach — Schatten AUS, DPR 1
     fpsDrop: 45,               // sustained fps below this → drop one tier
     fpsRaise: 57,              // sustained fps above this → raise one tier (with hysteresis)
     windowSec: 3,              // seconds of fps averaging before a tier decision
@@ -618,6 +620,7 @@ const windUniform={ value:0 }
    als solide Quadrate verrechnet und "AO-Geisterquadrate" werfen. Diese Objekte werden
    während des AO-G-Buffers ausgeblendet (spart zugleich 42k Instanzen in zwei Re-Renders). */
 const AO_EXCLUDE=[]
+let grassField=null   // Referenz auf das 42k-Gras-InstancedMesh → setQualityTier dünnt count je Stufe aus
 /* Referenzen der Landmarken für die Site-Plan-Assertions (Dev-Verifikation) */
 const SITE={riverZ:39}
 /* Foliage-Shader-Hook (onBeforeCompile ist Single-Slot, daher kombiniert):
@@ -1303,6 +1306,7 @@ function bladeTexture(){ const s=128,c=cvs(s),x=c.getContext('2d'); x.clearRect(
     placed++
   }
   gi.count=placed; gi.instanceMatrix.needsUpdate=true; if(gi.instanceColor) gi.instanceColor.needsUpdate=true
+  grassField=gi; gi.userData.full=placed   // volle Halmzahl merken → per-Stufe-Cap in setQualityTier
   buildingGroup.add(gi); AO_EXCLUDE.push(gi)
   /* Gräsersaum entlang beider Langfassaden: verwurzelte Cluster mit Pflanzringen im Belag */
   for(let side=-1;side<=1;side+=2){ for(let x=-15;x<=15;x+=.95){
@@ -2112,6 +2116,8 @@ function setQualityTier(tier){ if(!sceneConfig.quality[tier]) return
   if(renderer.shadowMap.enabled!==q.shadows){ renderer.shadowMap.enabled=q.shadows; renderer.shadowMap.needsUpdate=true }
   if(gtaoPass) gtaoPass.enabled=q.ao
   if(smaaPass) smaaPass.enabled=q.smaa
+  /* Gras je Stufe ausdünnen — entlastet die Dauer-Render-Frames (AutoRotate/Leerlauf) auf schwacher HW */
+  if(grassField&&grassField.userData.full) grassField.count=Math.max(1,Math.round(grassField.userData.full*(q.grass??1)))
   applyAoSize() }
 setQualityTier(qualityTier)
 /* FPS-Monitor: schnell abstufen, träge heraufstufen; Ceiling verhindert Ping-Pong.
