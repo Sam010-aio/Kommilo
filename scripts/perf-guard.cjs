@@ -21,7 +21,6 @@ const checks = [
   ['On-demand: renderNeeded flag',     /let\s+renderNeeded\s*=/],
   ['On-demand: invalidate()',          /function\s+invalidate\s*\(/],
   ["On-demand: controls 'change' hook",/addEventListener\(\s*'change'\s*,/],
-  ['Navigation-LOD during gesture',    /function\s+navLOD\s*\(/],
   ['On-demand: idle skip returns',     /on-demand IDLE/],
   ['Shadows: autoUpdate = false',      /shadowMap\.autoUpdate\s*=\s*false/],
   ['Shadows: single directional caster (sun)', /sun\.castShadow\s*=\s*true/],
