@@ -1155,3 +1155,13 @@ nicht. Genau deshalb half die bisherige Boost-Logik (nur DPR) nicht gegen das Ru
 **Entscheidung/Trade-off:** Detail weicht der Geschwindigkeit **nur während der Bewegung** — Standard-
 Navigations-LOD (Google Earth/Maps/CAD). Feel vor Detail (Owner-Priorität). Vollständig reversibel,
 kein Inhalt entfernt, keine App-Logik/UI berührt. Ausblend-Set und Gras-Anteile sind Ein-Zeilen-Tunables.
+
+### 26a. ZURÜCKGENOMMEN (Owner-Korrektur)
+Der Owner lehnt **jeden sichtbaren Kompromiss** ab: Das Ausblenden der Baumblätter beim Bewegen legte
+kahle Äste frei, die wie „Bäume durch die Gebäude" wirken; das Ausdünnen des Grases ist „Löschen" von
+Detail. **Navigations-LOD und Gras-Cap wurden vollständig entfernt** — die Szene rendert jetzt **komplett
+und unverändert, ob still oder in Bewegung, auf jeder Stufe**. Es bleiben nur nicht-degradierende Wins:
+**On-Demand-Rendering** (Leerlauf → 0, verändert nichts am Bild) und der **DPR-Interaction-Boost**
+(temporäres, reversibles Weichzeichnen während der Geste — entfernt kein Objekt). Weitere „unsichtbare"
+Beschleunigung (korrektes Frustum-Culling off-screen, weiteres Geometrie-Mergen) ist möglich, aber
+riskant ohne echten Browser-Test und wird nur nach Rücksprache angefasst.
