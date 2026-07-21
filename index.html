@@ -469,7 +469,9 @@ let lastInteract = -9999, boostOn = false, boostOffAt = Infinity                
    bezogenen Änderungen (Preset, Sektion, Auswahl, Resize, GLB) rufen es explizit. ===== */
 let renderNeeded = true
 function invalidate(){ renderNeeded = true }
-controls.addEventListener('change', invalidate)
+/* 'change' feuert nur bei echter Kamerabewegung → Frame anfordern; läuft gerade eine Geste (boostOn),
+   ist das der Moment, das Navigations-LOD zu zünden (nicht bei einem reinen Tap ohne Bewegung). */
+controls.addEventListener('change', ()=>{ renderNeeded = true; if(boostOn) navLOD(true) })
 /* Ph3: aktives Ziehen/Zoomen → sofort DPR senken + AO aus (applyBoost weiter unten definiert, gehoisted) */
 controls.addEventListener('start', () => { controls.autoRotate = false; lastInteract = performance.now()
   boostOffAt = Infinity; if(!boostOn){ boostOn = true; applyBoost(true) } })
@@ -2070,15 +2072,31 @@ function applyAoSize(){ if(!composer||!gtaoPass||!gtaoPass.enabled) return
   const q=sceneConfig.quality[qualityTier], pr=renderer.getPixelRatio()
   /* Halbauflösung (in effektiven Pixeln): AO ist niederfrequent — optisch kaum Verlust, halbe Füllrate */
   if(q.aoHalfRes) gtaoPass.setSize(Math.ceil((innerWidth-264)*pr/2),Math.ceil((innerHeight-64)*pr/2)) }
-/* Ph3 Interaction-Boost: aktives Ziehen → DPR × boostScale (Floor boostFloor) + AO aus → fps für die
-   Geste; nach dem Loslassen zurück. KEIN DPR-Ramp pro Frame (würde Render-Targets thrashen) — je ein
-   setSize bei Start und Ende, und nur wenn echter DPR-Spielraum besteht (auf Potato/DPR 1 wirkungslos). */
+/* ===== Navigations-LOD: das schwerste Detail während der Geste ausblenden =====
+   Beim Bewegen ist die Szene NICHT füllraten-, sondern draw-call-/vertex-gebunden: das 42k-Gras-Feld
+   (riesige Vertex-Last, frustumCulled=false) + die gegliederten Figuren (peopleGroup = viele Draw-Calls)
+   werden jeden gezogenen Frame gesendet — die DPR-Senkung erreicht diese Geometrie nicht. Während des
+   Ziehens/Zoomens werden daher Foliage (AO_EXCLUDE: Gras/Hecken-/Baumblätter) + Figuren + Partikel
+   unsichtbar geschaltet → Draw-Calls/Dreiecke brechen ein, die Geste bleibt leicht; 250 ms nach dem
+   Loslassen kommt alles zurück (durch die Bewegung kaschiert). Sichtbarkeit wird pro Objekt gesichert/
+   zurückgesetzt, damit Tag/Nacht-Partikel und ausgeblendete Gruppen korrekt bleiben. */
+const NAV_EXTRA=[peopleGroup, fireflies.p, motes.p, fallLeaves.p]
+function navSet(o,hide){ if(!o) return
+  if(hide){ if(o.userData._navVis===undefined) o.userData._navVis=o.visible; o.visible=false }
+  else if(o.userData._navVis!==undefined){ o.visible=o.userData._navVis; o.userData._navVis=undefined } }
+function navLOD(hide){ for(let i=0;i<AO_EXCLUDE.length;i++) navSet(AO_EXCLUDE[i],hide)
+  for(let i=0;i<NAV_EXTRA.length;i++) navSet(NAV_EXTRA[i],hide) }
+/* Ph3 Interaction-Boost: aktives Ziehen → DPR × boostScale (Floor boostFloor) + AO aus + Navigations-LOD
+   → fps für die Geste; nach dem Loslassen zurück. KEIN DPR-Ramp pro Frame (würde Render-Targets
+   thrashen) — je ein setSize bei Start und Ende, und nur wenn echter DPR-Spielraum besteht. */
 function applyBoost(on){
   const full=Math.min(devicePixelRatio,sceneConfig.quality[qualityTier].pixelRatio,sceneConfig.renderer.maxPixelRatio)
   const pr=on?Math.max(sceneConfig.camera.boostFloor,full*sceneConfig.camera.boostScale):full
   if(Math.abs(renderer.getPixelRatio()-pr)>.01){ renderer.setPixelRatio(pr); renderer.setSize(innerWidth-264,innerHeight-64)
     if(composer){ composer.setPixelRatio(pr); composer.setSize(innerWidth-264,innerHeight-64) } applyAoSize() }
-  if(gtaoPass) gtaoPass.enabled = on ? false : sceneConfig.quality[qualityTier].ao }
+  if(gtaoPass) gtaoPass.enabled = on ? false : sceneConfig.quality[qualityTier].ao
+  if(!on) navLOD(false)        // Detail erst beim Loslassen (entprellt) zurück; Ausblenden triggert echte Bewegung ('change')
+  invalidate() }
 function setQualityTier(tier){ if(!sceneConfig.quality[tier]) return
   qualityTier=tier
   const q=sceneConfig.quality[tier]
