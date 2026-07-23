@@ -275,8 +275,8 @@ const sceneConfig = {
     damping: .06,              // orbit inertia — "wind": instant response, ~0.6–0.9 s glide-out after release
     breatheAmp: .05,           // metres of idle vertical "breathing" drift (very subtle life)
     breatheSpeed: .22,         // Hz-ish speed of the breathing sine — slow enough to not read as a loop
-    boostScale: .75,           // Ph3 Interaction-Boost: DPR × 0.75 während aktivem Ziehen/Zoomen …
-    boostFloor: 1.0,           // … aber nie unter 1.0 (Aliasing-Boden); auf Stufen ohne DPR-Spielraum unwirksam
+    boostScale: .62,           // Ph3 Interaction-Boost: DPR × 0.62 NUR während aktivem Ziehen/Zoomen → spürbar leichtere Bewegung, jetzt auch auf DPR-1-Geräten (Handy/iGPU) wirksam …
+    boostFloor: .8,            // … aber nie unter 0.8 (milder Aliasing-Boden); volle Schärfe kehrt 250 ms nach dem Loslassen zurück → Standbild/Qualität unverändert
     boostRestoreMs: 250,       // nach dem Loslassen 250 ms entprellen, dann volle DPR/AO wiederherstellen (kein Puffer-Thrash pro Frame)
   },
   quality: {                   // LIGHTNESS RESCUE Ph2: 4 gerätebewusste Stufen (Anzeigenamen ↔ interne Keys)
