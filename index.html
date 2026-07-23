@@ -286,8 +286,8 @@ const sceneConfig = {
        Balanced/Light/Potato rendern direkt (renderer.render) — Tonemapping/sRGB liegen am Renderer, Antialiasing
        macht MSAA (antialias:true) → kein Vollbild-Postpass, spart Füllrate ohne Farb-/Kantenregression. */
     high:   { pixelRatio: 2,    shadowMap: 2048, shadows: true,  ao: true,  aoHalfRes: true,  smaa: true,  post: true  }, // dGPU/Apple-Silicon Desktop
-    medium: { pixelRatio: 1.5,  shadowMap: 1536, shadows: true,  ao: false, aoHalfRes: true,  smaa: false, post: false }, // Balanced: Intel-iGPU/unbekannt Desktop — Post aus
-    low:    { pixelRatio: 1.25, shadowMap: 1024, shadows: true,  ao: false, aoHalfRes: true,  smaa: false, post: false }, // Light: Handys default (Ziel 30 fps)
+    medium: { pixelRatio: 1.5,  shadowMap: 1024, shadows: true,  ao: false, aoHalfRes: true,  smaa: false, post: false }, // Balanced: Intel-iGPU/unbekannt Desktop — Post aus; Schatten 1024 (Brief A.4)
+    low:    { pixelRatio: 1.0,  shadowMap: 1024, shadows: true,  ao: false, aoHalfRes: true,  smaa: false, post: false }, // Light: Handys default — DPR 1.0 mobil (Brief A.3), Ziel 30 fps
     potato: { pixelRatio: 1.0,  shadowMap: 512,  shadows: false, ao: false, aoHalfRes: true,  smaa: false, post: false }, // Notnetz: Software-GL/sehr schwach — Schatten AUS, DPR 1
     fpsDrop: 45,               // sustained fps below this → drop one tier
     fpsRaise: 57,              // sustained fps above this → raise one tier (with hysteresis)
