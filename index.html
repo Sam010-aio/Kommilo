@@ -14,11 +14,11 @@
 /* ===== Delivery / Build-Sichtbarkeit (LIGHTNESS RESCUE Ph0) =====
    EINE Quelle der Build-Kennung — geteilt mit sw.js (Cache-Name = kommilo-v${id}). Sichtbar als
    dezenter Fuß-Stempel und im ?debug=perf-Overlay; so ist am Bildschirm ablesbar, welcher Build läuft. */
-window.__BUILD = { id: '2026.07.23-6bb8971', date: '2026-07-23', hash: '6bb8971' }; // id = Delivery-Stempel (Datum-Inhalts-Commit) — GLEICHE Zeichenkette wie BUILD in sw.js ⇒ Cache-Name = kommilo-v<id>
+window.__BUILD = { id: '2026.07.23-0cebda9', date: '2026-07-23', hash: '0cebda9' }; // id = Delivery-Stempel (Datum-Inhalts-Commit) — GLEICHE Zeichenkette wie BUILD in sw.js ⇒ Cache-Name = kommilo-v<id>
 (function(){
   // Fuß-Stempel setzen, sobald der Body existiert (robust — auch wenn die 3D-App nicht bootet)
   function stamp(){ var el=document.getElementById('buildstamp'); if(!el) return
-    el.textContent='v'+window.__BUILD.id }   // → v2026.07.23-6bb8971 (Format laut Spezifikation)
+    el.textContent='v'+window.__BUILD.id }   // → v2026.07.23-0cebda9 (Format laut Spezifikation)
   if(document.readyState!=='loading') stamp(); else addEventListener('DOMContentLoaded', stamp)
   if(!('serviceWorker' in navigator)) return
   // Selbst-enthaltener Reload-Hinweis — unabhängig vom App-Toast, wirkt auch bei kaputter/veralteter App
@@ -2167,6 +2167,52 @@ standPerson(peopleGroup,-24,-9,.7,8)
 { const P=[[10,-140,1.1,51],[12.2,-141,-2.0,52],[13.6,-139.4,2.6,53],[27,-146,-.6,54],[28.8,-147,2.4,55]] // Forumsplatz (SITEPLAN)
   P.forEach(([px,pz,ry,sd],i)=>{ const F=makeFigure(sd); F.root.position.set(px,0,pz); F.root.rotation.y=ry
     poseStand(F); registerFigure(F,(i===1||i===4)?'talk':'stand'); peopleGroup.add(F.root) }) }
+/* ===== Feature F — LAGERFEUER-KREISE (3D): Steinring, Baumstamm-Bänke, Low-Poly-Feuer,
+   sitzende Figuren; freie Plätze = leere Stämme, freie Spots = unbefeuerter Ring.
+   Klick-Ziele (fireTargets) + Labels analog zum Tisch-System. Voll rebuild-bar. ===== */
+const firesGroup=new THREE.Group(); scene.add(firesGroup)
+const fireTargets=[], fireFlames=[], fireLights=[]
+const stoneM_F=new THREE.MeshStandardMaterial({color:'#8d8880',roughness:.95})
+const ashM_F=new THREE.MeshStandardMaterial({color:'#3a3634',roughness:1})
+const logM_F=new THREE.MeshStandardMaterial({color:'#7a6852',roughness:.9})
+const flameM_F=new THREE.MeshStandardMaterial({color:'#ffb347',emissive:0xff7a1f,emissiveIntensity:1.6,transparent:true,opacity:.92,side:THREE.DoubleSide,fog:false})
+const flameM2_F=new THREE.MeshStandardMaterial({color:'#ffe08a',emissive:0xffc24d,emissiveIntensity:1.9,transparent:true,opacity:.9,side:THREE.DoubleSide,fog:false})
+function rebuildFires(){
+  while(firesGroup.children.length) firesGroup.remove(firesGroup.children[0])
+  for(let i=AO_EXCLUDE.length-1;i>=0;i--) if(AO_EXCLUDE[i].userData&&AO_EXCLUDE[i].userData.fi!==undefined) AO_EXCLUDE.splice(i,1) // alte Flammen austragen (kein Array-Wachstum)
+  fireTargets.length=0; fireFlames.length=0
+  fireLights.forEach(l=>firesGroup.add(l)) // Lichter überleben den Rebuild (Intensität steuert applyMode)
+  const occ=new Map(fires().map(f=>[f.slotId,f]))
+  FIRE_SLOTS.forEach((sl,si)=>{
+    const f=occ.get(sl.id), g=new THREE.Group(); g.position.set(sl.x,0,sl.z); firesGroup.add(g)
+    for(let k=0;k<12;k++){ const a=k/12*Math.PI*2
+      const st=new THREE.Mesh(new THREE.BoxGeometry(.34,.22,.24),stoneM_F)
+      st.position.set(Math.cos(a)*1.05,.11,Math.sin(a)*1.05); st.rotation.y=a+((k*7)%3)*.3; st.castShadow=true; g.add(st) }
+    const ash=new THREE.Mesh(new THREE.CircleGeometry(.95,18),ashM_F); ash.rotation.x=-Math.PI/2; ash.position.y=.02; g.add(ash)
+    const seats=f?f.capacity:6
+    for(let k=0;k<Math.min(8,seats);k++){ const a=k/Math.min(8,seats)*Math.PI*2+.4
+      const log=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,1.15,10),logM_F)
+      log.rotation.z=Math.PI/2; log.rotation.y=a+Math.PI/2
+      log.position.set(Math.cos(a)*2.05,.17,Math.sin(a)*2.05); log.castShadow=true; log.receiveShadow=true; g.add(log) }
+    if(f){ /* brennendes Feuer: 3 gekreuzte Flammen-Dreiecke + Scheite + Sitzfiguren */
+      for(const [rx,rz] of [[.3,0],[-.25,.2],[0,-.3]]){ const sc2=new THREE.Mesh(new THREE.CylinderGeometry(.06,.07,.85,8),logM_F)
+        sc2.rotation.z=1.2; sc2.rotation.y=rx*4; sc2.position.set(rx,.16,rz); g.add(sc2) }
+      for(let k=0;k<3;k++){ const fl=new THREE.Mesh(new THREE.ConeGeometry(.28-.06*k,.85-.18*k,7),k===1?flameM2_F:flameM_F)
+        fl.position.set(0,.45+.09*k,0); fl.rotation.y=k*2.1; fl.userData.fi=si*3+k; fireFlames.push(fl); g.add(fl); AO_EXCLUDE.push(fl) }
+      const n=Math.min(f.members,6)
+      for(let k=0;k<n;k++){ const a=k/Math.max(4,seats)*Math.PI*2+.4
+        const F=makeFigure(60+si*7+k); F.root.position.set(Math.cos(a)*2.05,.34,Math.sin(a)*2.05)
+        F.root.rotation.y=-a+Math.PI/2+((k%2)? .2:-.2)
+        poseSit(F); registerFigure(F,'sit'); g.add(F.root) } }
+    const tgt=new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.4,1.6,10),new THREE.MeshBasicMaterial({visible:false}))
+    tgt.position.set(sl.x,.8,sl.z); tgt.userData.fireSlot=sl.id; firesGroup.add(tgt); fireTargets.push(tgt) })
+  invalidate() }
+FIRE_SLOTS.forEach(sl=>{ const l=new THREE.PointLight(0xff9a3d,0,9,2); l.position.set(sl.x,1.1,sl.z); fireLights.push(l); firesGroup.add(l) })
+rebuildFires()
+/* Flammen-Flicker: null Allokationen — nur Scale/Rotation an registrierten Cones */
+function flickerFires(t){ for(let i=0;i<fireFlames.length;i++){ const fl=fireFlames[i], ph=fl.userData.fi
+  const s2=1+Math.sin(t*9+ph*2.1)*.13+Math.sin(t*23+ph)*.06
+  fl.scale.set(s2,1+Math.sin(t*13+ph)*.18,s2); fl.rotation.y+=.02 } }
 /* ===== WORKSTREAM D — Festoon-System (C5): geordnete Topologie statt Netz =====
    LIGHT_PLAN = bewusste, editierbare Anker→Anker-Liste: (1) Trauf-/Balkon-PERIMETER am
    Studierendenhaus, (2) Girlanden entlang der Brücken-Dachkanten, (3) Platz-Spans zwischen
@@ -2415,7 +2461,45 @@ const UNIS=[
 const SLOTS_SH=[{id:'t1',x:-10,z:-8,l:0,r:0},{id:'t2',x:10,z:-8,l:0,r:1.5708},{id:'t3',x:-11,z:6.5,l:0,r:0},{id:'t4',x:-10,z:0,l:1,r:1.5708},{id:'t5',x:9,z:7,l:0,r:1.5708},{id:'t6',x:10,z:-1,l:1,r:0},{id:'t7',x:0,z:9.5,l:0,r:0},{id:'t8',x:7.5,z:8,l:1,r:0},{id:'t9',x:-11,z:-1,l:0,r:1.5708},{id:'t10',x:4,z:-9,l:0,r:0},{id:'t11',x:-9,z:8,l:1,r:0},{id:'t12',x:0,z:-9.5,l:1,r:0}]
 const SLOTS_PLAZA=[{id:'t1',x:-9,z:26,l:0,r:0},{id:'t2',x:-3,z:29,l:0,r:1.5708},{id:'t3',x:3,z:26,l:0,r:0},{id:'t4',x:9,z:29,l:0,r:1.5708},{id:'t5',x:-6,z:33,l:0,r:0},{id:'t6',x:6,z:33,l:0,r:0},{id:'t7',x:0,z:36,l:0,r:0},{id:'t8',x:-12,z:31,l:0,r:1.5708},{id:'t9',x:12,z:35,l:0,r:1.5708},{id:'t10',x:-9,z:37,l:0,r:0},{id:'t11',x:9,z:38,l:0,r:0},{id:'t12',x:-3,z:38,l:0,r:1.5708}]
 const GROUP_COLORS=['#6366F1','#FB7185','#14B8A6','#F59E0B','#38BDF8','#8B5CF6']
-const state={section:'campus',uniId:'tubs',selected:null,mode:'tag',myTable:null,intSel:null,
+/* ===== Feature F — Aktivitäten & Hobbys (Lagerfeuer-Kreise, DRAUSSEN; Lernen bleibt drinnen) =====
+   Taxonomie + kuratierte Braunschweig-Tipps (redaktionelle „Tipps", KEINE Werbung; später serverseitig). */
+const ACTIVITIES=[
+ {id:'fussball',n:'Fußball',ic:'⚽',cat:'Sport',size:10,out:true},{id:'basketball',n:'Basketball',ic:'🏀',cat:'Sport',size:8,out:true},
+ {id:'tennis',n:'Tennis',ic:'🎾',cat:'Sport',size:4,out:true},{id:'laufen',n:'Laufen',ic:'🏃',cat:'Sport',size:6,out:true},
+ {id:'bouldern',n:'Bouldern',ic:'🧗',cat:'Sport',size:5,out:false},{id:'schwimmen',n:'Schwimmen',ic:'🏊',cat:'Sport',size:6,out:false},
+ {id:'radtour',n:'Radtour',ic:'🚴',cat:'Sport',size:8,out:true},{id:'wandern',n:'Wandern',ic:'🥾',cat:'Sport',size:8,out:true},
+ {id:'kino',n:'Kino',ic:'🎬',cat:'Kultur',size:6,out:false},{id:'musik',n:'Musik / Jam',ic:'🎸',cat:'Kultur',size:6,out:false},
+ {id:'fotografie',n:'Fotografie',ic:'📷',cat:'Kultur',size:5,out:true},
+ {id:'gaming',n:'Gaming',ic:'🎮',cat:'Social',size:6,out:false},{id:'brettspiele',n:'Brettspiele',ic:'🎲',cat:'Social',size:6,out:false},
+ {id:'kochen',n:'Kochen',ic:'🍳',cat:'Social',size:6,out:false},{id:'karten',n:'Kartenspiele',ic:'🃏',cat:'Social',size:5,out:false}]
+const ACTIVITY_TIPS={
+ fussball:['Bolzplätze im Prinzenpark — abends meist frei','Unisport TU (Sportzentrum Beethovenstraße): günstige Semesterkurse'],
+ basketball:['Courts im Prinzenpark','Unisport-Hallenzeiten im Wintersemester'],
+ tennis:['Unisport-Tennisanlage Beethovenstraße (Studierendentarif)','Plätze am Bürgerpark'],
+ laufen:['Oker-Runde (~7 km) direkt ab Studierendenhaus','Prinzenpark-Runde, abends gut beleuchtet'],
+ bouldern:['Greifhaus Braunschweig — Studirabatt wochentags vormittags','Einsteigerkurse über den Unisport'],
+ schwimmen:['Wasserwelt Braunschweig mit Studitarif','Kennelbad im Sommer'],
+ radtour:['Okerradweg Richtung Wolfenbüttel','Elm-Tour am Wochenende'],
+ wandern:['Naturschutzgebiet Riddagshausen','Elm/Lappwald mit der Regionalbahn'],
+ kino:['Sneak-/Studi-Kinotage im C1 und Universum (di/mi)','Astor mit Studierendenrabatt'],
+ musik:['Jam-/Proberäume übers Studierendenwerk anfragen','Offene Bühnen in KufA & Co.'],
+ fotografie:['Blaue Stunde am Okerufer + Magniviertel','Fotowalk Riddagshausen'],
+ gaming:['LAN-Abend im Studierendenhaus organisieren','Gaming-Hochschulgruppen der TU'],
+ brettspiele:['Spieleabende im Studierendenhaus-EG','Spieleläden in der Innenstadt für Neuheiten'],
+ kochen:['Wochenmarkt Altstadtmarkt (Sa) für Zutaten','Gemeinschaftsküchen im Wohnheim'],
+ karten:['Skat-/Doppelkopf-Runden im EG','Café-Abende im Magniviertel']}
+/* 8 Feuerstellen auf den Rasenflächen ums Studierendenhaus (frei von Wegen/Straße/Hecken/Tischen) */
+const FIRE_SLOTS=[{id:'fs1',x:-27,z:-2},{id:'fs2',x:-31,z:7},{id:'fs3',x:-24,z:16},{id:'fs4',x:26,z:-8},
+ {id:'fs5',x:29,z:3},{id:'fs6',x:24,z:13},{id:'fs7',x:-9,z:29},{id:'fs8',x:12,z:30}]
+const FIRE_EXPIRY_H=24 // Feuer erlöschen automatisch nach spätestens 24 h (konfigurierbar; Ende des Tages siehe fireExpiry())
+function fireExpiry(){ const d=new Date(); d.setHours(23,59,0,0); const eod=d.getTime()
+  return Math.min(eod, Date.now()+FIRE_EXPIRY_H*3600*1000) }
+const state={section:'campus',uniId:'tubs',selected:null,mode:'tag',myTable:null,intSel:null,fireSel:null,
+ firesByUni:{
+  tubs:[{id:'f1',activity:'fussball',members:3,capacity:6,host:'Jonas Reincke',slotId:'fs1',expires_at:Date.now()+6*3600*1000},
+   {id:'f2',activity:'brettspiele',members:4,capacity:6,host:'Aylin Kaya',slotId:'fs5',expires_at:Date.now()+8*3600*1000},
+   {id:'f3',activity:'musik',members:2,capacity:5,host:'Mara Schulz',slotId:'fs7',expires_at:Date.now()+5*3600*1000}],
+  lmu:[],rwth:[],kit:[]},
  groupsByUni:{
   tubs:[{id:'g1',name:'Spezi Team',subject:'Mathe 2',members:1,capacity:7,color:'#6366F1',slotId:'t1'},
    {id:'g2',name:'Algorithms',subject:'Algorithmen',members:4,capacity:6,color:'#FB7185',slotId:'t2'},
@@ -2438,10 +2522,14 @@ const state={section:'campus',uniId:'tubs',selected:null,mode:'tag',myTable:null
  docs:[{t:'Klausur-Zusammenfassung Mathe 2',ty:'PDF',c:'Mathe 2',s:'2,4 MB'},{t:'Übungsblatt 5 — Lösungen',ty:'PDF',c:'Algorithmen',s:'820 KB'},{t:'Formelsammlung Thermodynamik',ty:'DOCX',c:'Thermodynamik',s:'1,1 MB'},{t:'Laborprotokoll Vorlage',ty:'XLSX',c:'Elektrotechnik',s:'340 KB'},{t:'Altklausuren 2019–2024',ty:'ZIP',c:'Technische Mechanik',s:'18 MB'}],
  invitations:[{id:'i1',from:'Lena Vogt',group:'Spezi Team',subject:'Mathe 2',gid:'g1'},{id:'i2',from:'Circuit Lab',group:'Circuit Lab',subject:'Elektrotechnik',gid:'g3'}],
  settings:{email:true,push:false,pub:true,times:true,semester:4,effects:true,glb:''}}
-const SECTIONS=[['campus','Campus'],['partner','Lernpartner finden'],['matches','Matches'],['gruppen','Lerngruppen'],['unterlagen','Club Unterlagen'],['international','International'],['einladungen','Einladungen'],['profil','Profil'],['einstellungen','Einstellungen']]
-const ICONS={campus:'M3 21V9l9-6 9 6v12h-6v-7H9v7H3z',partner:'M16 11a4 4 0 1 0-8 0M2 21c1.5-4 6-5 10-5s8.5 1 10 5',matches:'M12 21C6 16 3 12 3 8.5A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 9 2.5C21 12 18 16 12 21z',gruppen:'M4 10h16M6 10V6h12v4M8 10v10M16 10v10M4 20h16',unterlagen:'M3 7h6l2 2h10v11H3z',international:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3.5 3 14.5 0 18-3-3.5-3-14.5 0-18z',einladungen:'M3 6h18v12H3zM3 7l9 6 9-6',profil:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c1-4.5 5-6 8-6s7 1.5 8 6',einstellungen:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12l2-1-1-3-2.2.3-1.4-1.4L17 4.5l-3-1-1 2h-2l-1-2-3 1 .6 2.4L6.2 8.3 4 8l-1 3 2 1-2 1 1 3 2.2-.3 1.4 1.4L7 19.5l3 1 1-2h2l1 2 3-1-.6-2.4 1.4-1.4 2.2.3 1-3-2-1z'}
+const SECTIONS=[['campus','Campus'],['partner','Lernpartner finden'],['matches','Matches'],['gruppen','Lerngruppen'],['aktivitaeten','Aktivitäten'],['unterlagen','Club Unterlagen'],['international','International'],['einladungen','Einladungen'],['profil','Profil'],['einstellungen','Einstellungen']]
+const ICONS={campus:'M3 21V9l9-6 9 6v12h-6v-7H9v7H3z',partner:'M16 11a4 4 0 1 0-8 0M2 21c1.5-4 6-5 10-5s8.5 1 10 5',matches:'M12 21C6 16 3 12 3 8.5A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 9 2.5C21 12 18 16 12 21z',gruppen:'M4 10h16M6 10V6h12v4M8 10v10M16 10v10M4 20h16',aktivitaeten:'M12 3c2.2 2.8 5 4.6 5 8.2a5 5 0 1 1-10 0c0-2 .9-3.6 2-5.2.5 1.6 1.4 2.3 2.9 2.5-.9-1.9-.9-3.6.1-5.5z',unterlagen:'M3 7h6l2 2h10v11H3z',international:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3.5 3 14.5 0 18-3-3.5-3-14.5 0-18z',einladungen:'M3 6h18v12H3zM3 7l9 6 9-6',profil:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c1-4.5 5-6 8-6s7 1.5 8 6',einstellungen:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12l2-1-1-3-2.2.3-1.4-1.4L17 4.5l-3-1-1 2h-2l-1-2-3 1 .6 2.4L6.2 8.3 4 8l-1 3 2 1-2 1 1 3 2.2-.3 1.4 1.4L7 19.5l3 1 1-2h2l1 2 3-1-.6-2.4 1.4-1.4 2.2.3 1-3-2-1z'}
 function uni(){ return UNIS.find(u=>u.id===state.uniId) }
 function groups(){ return state.groupsByUni[state.uniId]||[] }
+function fires(){ const list=state.firesByUni[state.uniId]||[]; const t=Date.now()
+  const keep=list.filter(f=>f.expires_at>t)
+  if(keep.length!==list.length){ state.firesByUni[state.uniId]=keep; if(typeof rebuildFires==='function') rebuildFires() } // Auto-Expire (Feature F)
+  return keep }
 function esc(t){ return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])) }
 function toast(title,desc,kind){ const w=document.getElementById('toasts')
   const d=document.createElement('div'); d.className='toast'
@@ -2495,6 +2583,7 @@ const DEFAULT_DB={
    modules:[], firstMatchUsed:false, firstGroupJoinUsed:false, credits:0, creditLog:[], blockedUsers:[] },
  pendingUnis:[], invitationsOut:[], matches:[], chats:{},
  myGroups:[], joinRequests:[], adminTransfers:[],
+ myFires:[], fireRequests:[],
  intlConnections:[], payments:[], auditLogs:[], notifications:[], reports:[],
  fileRatings:{}, dailyLimit:{ date:'', sent:0 }, moderation:{ strikes:0, bans:0, bannedUntil:0, history:[] },
  emailOutbox:[], emailCfg:{pub:'Ed26gbwlZBNJYcuPo',svc:'service_bnnsmba',tpl:'template_mshr21k'} }
@@ -2505,6 +2594,9 @@ function loadDB(){ try{ const raw=localStorage.getItem('wlt_db_v1'); DB=raw?JSON
   DB.emailCfg={pub:'Ed26gbwlZBNJYcuPo',svc:'service_bnnsmba',tpl:'template_mshr21k'}
   if(!DB.moderation) DB.moderation={strikes:0,bans:0,bannedUntil:0,history:[]}
   if(DB.user&&DB.user.credits===undefined){ DB.user.credits=0; DB.user.creditLog=[]; DB.user.firstGroupJoinUsed=false }
+  if(!DB.myFires) DB.myFires=[]                    // Feature F (Aktivitäten): additive Migration älterer DBs
+  if(!DB.fireRequests) DB.fireRequests=[]
+  if(DB.user&&DB.user.firstFireJoinUsed===undefined) DB.user.firstFireJoinUsed=false
   if(!DB.deviceId){ DB.deviceId='d-'+((crypto&&crypto.randomUUID)?crypto.randomUUID():(uid()+String(now()))) }
   if(!DB.claimedSessions) DB.claimedSessions=[] }
 function saveDB(){ try{ localStorage.setItem('wlt_db_v1',JSON.stringify(DB)) }catch(e){} }
@@ -2842,6 +2934,70 @@ const actions={
    notify('Mitgliedschaft aktiviert','Willkommen bei „'+g.name+'“.'+(freeJ?' Dein erster Gruppenbeitritt ist kostenlos.':' 1 Credit eingelöst — Guthaben: '+credits()+' Credits.'),'group')
    toast('Du bist „'+g.name+'“ beigetreten',freeJ?'Erster Beitritt kostenlos.':'1 Credit eingelöst · Guthaben: '+credits()+' Credits')
    render() },
+ fireCat(c){ state.fireCat=c; render() },
+ fireSelect(slotId){ state.fireSel=slotId; render() },
+ fireCreateModal(slot){ if(guardBlock())return
+   const occ=new Map(fires().map(f=>[f.slotId,f]))
+   const free=FIRE_SLOTS.filter(sl=>!occ.has(sl.id)); const target=slot||((free[0]||{}).id)
+   if(!target){ toast('Alle Feuerstellen belegt','Später wird ein Ring frei — Feuer erlöschen am Tagesende.','info'); return }
+   openModal('<div class="eyebrow">Aktivitäten · Schritt 1/2</div><h3>Feuer eröffnen</h3>'+
+    '<label>Aktivität wählen</label><div class="mrow" style="max-height:190px;overflow:auto">'+ACTIVITIES.map(a=>'<button class="chipbtn fa-act" data-id="'+a.id+'" onclick="[...document.querySelectorAll(\'.fa-act\')].forEach(b=>b.classList.remove(\'on\'));this.classList.add(\'on\')">'+a.ic+' '+a.n+'</button>').join('')+'</div>'+
+    '<label>Plätze (2–8)</label><select id="ff-cap">'+[2,3,4,5,6,7,8].map(n=>'<option '+(n===6?'selected':'')+'>'+n+'</option>').join('')+'</select>'+
+    '<label>Notiz (optional, z. B. Treffpunkt)</label><input id="ff-note" placeholder="z. B. 18 Uhr, Bälle vorhanden" maxlength="80">'+
+    '<div class="mrow"><button class="btn ghost" onclick="closeModal()">Abbrechen</button>'+
+    '<button class="btn grad" onclick="actions.fireCreateConsent(\''+target+'\')">Weiter</button></div>'+
+    '<p class="hint">Feuer eröffnen kostet 1 Credit (wie Gruppen gründen) — das hält die Kreise ernsthaft. Kein Abo. Drinnen wird gelernt, draußen gelebt: Lern-Themen gehören an die Tische.</p>') },
+ fireCreateConsent(slot){ const selBtn=document.querySelector('.fa-act.on')
+   if(!selBtn){ toast('Bitte eine Aktivität wählen','','info'); return }
+   const note=(document.getElementById('ff-note').value||'').trim()
+   if(note){ const bad=modCheck(note); if(bad){ const r=modStrike(bad,note); if(r.banned){ closeModal(); render() } return } }
+   state._fireDraft={activity:selBtn.dataset.id,cap:+document.getElementById('ff-cap').value,note,slot}
+   openModal('<div class="eyebrow">Aktivitäten · Schritt 2/2</div><h3>Host-Verantwortung</h3>'+
+    ['Ich prüfe Beitrittsanfragen fair und respektvoll.','Treffpunkte bleiben auf dem Campus bzw. an öffentlichen Orten.','Ich akzeptiere Datenschutz-, Ethik- und Community-Regeln.','Ich verstehe, dass Missbrauch zur Einschränkung führen kann.'].map(b=>'<label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0;font-weight:600;font-size:12.5px;color:#221c35"><input type="checkbox" class="fadm" style="width:auto;margin-top:2px">'+b+'</label>').join('')+
+    '<div class="mrow"><button class="btn ghost" onclick="closeModal()">Abbrechen</button>'+
+    '<button class="btn grad" onclick="actions.fireCreatePay()">Feuer entzünden (1 Credit)</button></div>') },
+ fireCreatePay(){ if([...document.querySelectorAll('.fadm')].some(c=>!c.checked)){ toast('Bitte alle Punkte bestätigen','','info'); return }
+   const d=state._fireDraft, occ=new Map(fires().map(f=>[f.slotId,f]))
+   if(occ.has(d.slot)){ toast('Ring inzwischen belegt','Bitte anderen Ring wählen.','info'); closeModal(); return }
+   if(!creditSpend(1,'Feuer eröffnet · '+d.activity)){ closeModal(); creditShop(); return }
+   const fid='f'+now()
+   ;(state.firesByUni[state.uniId]=state.firesByUni[state.uniId]||[]).push({id:fid,activity:d.activity,members:1,capacity:d.cap,host:DB.user.profile.name||'Du',note:d.note,slotId:d.slot,expires_at:fireExpiry()})
+   DB.myFires.push({id:fid,activity:d.activity,role:'host',created_at:now()})
+   saveDB(); closeModal(); state.fireSel=d.slot; rebuildFires()
+   notify('Feuer entzündet','Dein Kreis ist aktiv — 1 Credit eingelöst. Guthaben: '+credits()+' Credits. Es erlischt automatisch am Tagesende.','group')
+   toast('Feuer brennt 🔥','Freie Stämme sind sichtbar — Anfragen kommen zu dir.')
+   render() },
+ fireJoin(fid){ if(guardBlock())return
+   const f=fires().find(x=>x.id===fid); if(!f||DB.myFires.find(x=>x.id===fid)) return
+   if(f.members>=f.capacity){ toast('Kreis voll','Kein Payment wird gestartet.','info'); return }
+   let fr=DB.fireRequests.find(r=>r.fire_id===fid&&['requested','approved_payment_pending'].includes(r.status))
+   if(fr&&fr.status==='requested'){ toast('Anfrage läuft','Der Host wurde benachrichtigt.','info'); return }
+   if(fr&&fr.status==='approved_payment_pending'){ actions.fireJoinPay(fr.id); return }
+   fr={id:uid(),fire_id:fid,activity:f.activity,status:'requested',created_at:now()}
+   DB.fireRequests.push(fr); saveDB()
+   toast('Anfrage gesendet','Anfragen und Ablehnungen sind kostenlos.'); render()
+   setTimeout(()=>{ fr.status='approved_payment_pending'; saveDB()
+     notify('Dazusetzen bestätigen','Der Host hat dich angenommen. Erster Aktivitäten-Beitritt kostenlos, danach 1 Credit — wie bei Gruppen.','group')
+     render() },3000) },
+ fireJoinPay(frId){ const fr=DB.fireRequests.find(r=>r.id===frId); if(!fr||fr.status!=='approved_payment_pending')return
+   const f=fires().find(x=>x.id===fr.fire_id); if(!f)return
+   if(f.members>=f.capacity){ toast('Kreis inzwischen voll','Kein Payment möglich.','info'); return }
+   const freeJ=!DB.user.firstFireJoinUsed
+   if(!freeJ&&credits()<1){ creditShop(); return }
+   if(freeJ) DB.user.firstFireJoinUsed=true
+   else creditSpend(1,'Aktivität · '+f.activity,frId)
+   fr.status='joined'; f.members++
+   DB.myFires.push({id:f.id,activity:f.activity,role:'member',joined_at:now()})
+   saveDB(); rebuildFires()
+   toast('Du sitzt am Feuer 🔥',freeJ?'Erster Aktivitäten-Beitritt kostenlos.':'1 Credit eingelöst · Guthaben: '+credits()+' Credits')
+   render() },
+ fireLeave(fid){ const mf=DB.myFires.find(x=>x.id===fid); if(!mf)return
+   const list=state.firesByUni[state.uniId]||[], f=list.find(x=>x.id===fid)
+   if(mf.role==='host'){ state.firesByUni[state.uniId]=list.filter(x=>x.id!==fid); state.fireSel=null
+     toast('Feuer gelöscht','Der Ring ist wieder frei.') }
+   else if(f){ f.members=Math.max(1,f.members-1); toast('Kreis verlassen','Kostenlos — jederzeit wieder dazusetzen.') }
+   DB.myFires=DB.myFires.filter(x=>x.id!==fid); DB.fireRequests=DB.fireRequests.filter(r=>r.fire_id!==fid)
+   saveDB(); rebuildFires(); render() },
  leaveGroup(gid){ const mg=DB.myGroups.find(x=>x.id===gid); if(!mg)return
    if(mg.role==='admin'){ openModal('<div class="eyebrow">Lerngruppen</div><h3>Admin-Rolle zuerst übergeben</h3><p>'+ADMIN_LEAVE_TEXT+'</p>'+
      '<button class="btn grad w" onclick="actions.transferModal(\''+gid+'\')">Admin-Rolle übertragen</button>'+
@@ -3239,9 +3395,9 @@ function current(){ const s=state.section
   if(s==='unterlagen') return docScene
   if(s==='einladungen') return invScene
   if(s==='einstellungen') return gearScene
-  if(s==='campus'||s==='gruppen'||s==='partner') return scene
+  if(s==='campus'||s==='gruppen'||s==='partner'||s==='aktivitaeten') return scene
   return ambScene }
-const CAMS={campus:{p:[34,3.2,27],t:[0,4,0]},gruppen:{p:[26,5.2,38],t:[0,3.4,0]},partner:{p:[22,6.5,30],t:[0,2.2,0]},international:{p:[0,1.2,7],t:[0,0,0]},profil:{p:[0,1.5,3.6],t:[0,1,0]},matches:{p:[2.6,1.9,3.4],t:[0,1.1,0]},unterlagen:{p:[0,1.9,4.6],t:[0,1.2,-.6]},einladungen:{p:[0,1.6,4.8],t:[0,1.2,0]},einstellungen:{p:[.4,1.5,4.6],t:[.3,1.4,0]},amb:{p:[0,0,10],t:[0,0,0]}}
+const CAMS={campus:{p:[34,3.2,27],t:[0,4,0]},aktivitaeten:{p:[-38,9,22],t:[-14,1,8]},gruppen:{p:[26,5.2,38],t:[0,3.4,0]},partner:{p:[22,6.5,30],t:[0,2.2,0]},international:{p:[0,1.2,7],t:[0,0,0]},profil:{p:[0,1.5,3.6],t:[0,1,0]},matches:{p:[2.6,1.9,3.4],t:[0,1.1,0]},unterlagen:{p:[0,1.9,4.6],t:[0,1.2,-.6]},einladungen:{p:[0,1.6,4.8],t:[0,1.2,0]},einstellungen:{p:[.4,1.5,4.6],t:[.3,1.4,0]},amb:{p:[0,0,10],t:[0,0,0]}}
 /* Tag/Nacht: die Sonnenscheibe liefert der Himmels-Shader; Mond + Sterne nur nachts */
 const moonMesh=new THREE.Mesh(new THREE.SphereGeometry(5,20,16),new THREE.MeshBasicMaterial({color:0xe8ecf4,fog:false}))
 const mShadow=new THREE.Mesh(new THREE.SphereGeometry(4.6,20,16),new THREE.MeshBasicMaterial({color:0x10182a,fog:false}))
@@ -3281,6 +3437,7 @@ function applyMode(){ const night=state.mode==='nacht'
   stLights.forEach(l=>l.intensity=mc.stLightIntensity)
   stLampMat.emissiveIntensity=mc.streetLamp.emissive
   fireflies.p.visible=night; motes.p.visible=!night
+  fireLights.forEach(l=>l.intensity=night?1.15:0)   // Feature F: Feuerschein nur abends sichtbar (Preset-gesteuert)
   if(bloomPass){ bloomPass.strength=mc.bloom.strength; bloomPass.radius=mc.bloom.radius; bloomPass.threshold=mc.bloom.threshold }
   const wu=water.material.uniforms
   wu.waterColor.value.set(mc.water.color); wu.sunColor.value.set(mc.water.sunColor)
@@ -3341,7 +3498,8 @@ const genericGroup=new THREE.Group(); genericGroup.visible=false; scene.add(gene
   plaza.position.set(0,.02,31); plaza.receiveShadow=true; genericGroup.add(plaza) }
 function syncScene(){ const c=CAMS[state.section]||CAMS.amb
   camera.position.set(c.p[0],c.p[1],c.p[2]); controls.target.set(c.t[0],c.t[1],c.t[2])
-  controls.autoRotate=(state.section==='campus'||state.section==='partner'); controls.autoRotateSpeed=.3
+  controls.autoRotate=(state.section==='campus'||state.section==='partner'||state.section==='aktivitaeten'); controls.autoRotateSpeed=.3
+  firesGroup.visible=(uni().building!=='gen')   // Feature F: Feuerstellen nur am SH-Campus
   tablesGroup.visible=(state.section!=='partner')
   partnerGroup.visible=(state.section==='partner')
   const gen=uni().building==='gen'&&state.section==='gruppen'
@@ -3481,7 +3639,7 @@ function render(){ const unread=DB.notifications.some(n=>!n.read_at)
   if(g){ hud.innerHTML=gateHTML(g); document.getElementById('labels').style.display='none'; return }
   if(state.section==='international'&&!DB.user.intlWarningAccepted){ hud.innerHTML=intlWarnHTML(); document.getElementById('labels').style.display='none'; return }
   hud.innerHTML=HUD[state.section]?HUD[state.section]():''
-  document.getElementById('labels').style.display=(state.section==='gruppen'||state.section==='partner')?'block':'none' }
+  document.getElementById('labels').style.display=(state.section==='gruppen'||state.section==='partner'||state.section==='aktivitaeten')?'block':'none' }
 const HUD={
  campus(){ const gg=state.groupsByUni.tubs||[]
   return '<div class="card tl" style="max-width:430px"><div class="eyebrow">Campus</div>'+
@@ -3535,6 +3693,41 @@ const HUD={
     return '<button class="litem'+(on?' on':'')+'" onclick="actions.select(\''+sl.id+'\')">'+
     (gg?'<span class="dot" style="background:'+gg.color+'"></span><span class="li-t grow"><b>'+esc(gg.name)+'</b><i>'+esc(gg.subject)+'</i></span><em>'+gg.members+'/'+gg.capacity+'</em>'
       :'<span class="dot" style="background:#c4b5fd"></span><span class="li-t grow"><b style="color:#8B5CF6">Frei — gründen</b></span><em>+</em>')+'</button>' }).join('')+'</div>'
+  return head+tools+detail+list },
+ aktivitaeten(){ const fs=fires(), occ=new Map(fs.map(f=>[f.slotId,f]))
+  const cat=state.fireCat||'Alle'
+  const sel=state.fireSel?occ.get(state.fireSel):null, selFree=state.fireSel&&!sel
+  const head='<div class="card tl" style="max-width:430px"><div class="eyebrow">Aktivitäten & Hobbys</div>'+
+   '<h2>Lagerfeuer vor dem Haus</h2>'+
+   '<p>Drinnen wird gelernt — <b>draußen wird gelebt</b>: Sport, Kultur, Social. Klicke einen unbefeuerten Ring, um ein Feuer zu eröffnen, oder einen freien Stamm, um dich dazuzusetzen. Feuer erlöschen automatisch am Tagesende.</p>'+
+   '<div class="mrow">'+['Alle','Sport','Kultur','Social'].map(c=>'<button class="chipbtn'+(cat===c?' on':'')+'" style="'+(cat===c?'background:#F59E0B;color:#fff':'')+'" onclick="actions.fireCat(\''+c+'\')">'+c+'</button>').join('')+modeBtns()+'</div></div>'
+  const tools='<div class="tools tr"><button class="btn grad" onclick="actions.fireCreateModal()">🔥 Feuer eröffnen (1 Credit)</button></div>'
+  let detail
+  if(sel){ const a=ACTIVITIES.find(v=>v.id===sel.activity)||{n:sel.activity,ic:'🔥',cat:''}
+    const fr=DB.fireRequests.find(r=>r.fire_id===sel.id&&['requested','approved_payment_pending'].includes(r.status))
+    const mine=DB.myFires.find(x=>x.id===sel.id)
+    let act=''
+    if(mine&&mine.role==='host') act='<button class="btn ghost w" onclick="actions.fireLeave(\''+sel.id+'\')">Feuer löschen (Host)</button>'
+    else if(mine) act='<button class="btn ghost w" onclick="actions.fireLeave(\''+sel.id+'\')">Kreis verlassen (kostenlos)</button>'
+    else if(sel.members>=sel.capacity) act='<p class="hint center">Kreis voll — kein Payment wird gestartet.</p>'
+    else if(fr&&fr.status==='approved_payment_pending') act='<button class="btn grad w" onclick="actions.fireJoinPay(\''+fr.id+'\')">Dazusetzen bestätigen'+(DB.user.firstFireJoinUsed?' · 1 Credit':' · kostenlos (erster Beitritt)')+'</button>'
+    else if(fr&&fr.status==='requested') act='<p class="hint center">Anfrage gesendet — der Host prüft fair und respektvoll.</p>'
+    else act='<button class="btn grad w" onclick="actions.fireJoin(\''+sel.id+'\')">Dazusetzen anfragen (kostenlos)</button>'
+    const tips=(ACTIVITY_TIPS[sel.activity]||[]).map(t=>'<div class="litem"><span class="li-t"><i>💡 '+esc(t)+'</i></span></div>').join('')
+    detail='<div class="card bl" style="width:320px"><div class="row"><span style="font-size:20px">'+a.ic+'</span><b>'+esc(a.n)+'</b><span class="tag viol">'+esc(a.cat)+'</span><span class="mut" style="margin-left:auto">'+sel.members+'/'+sel.capacity+'</span></div>'+
+     '<div class="sub">Host: '+esc(sel.host)+' · erlischt '+new Date(sel.expires_at).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr</div>'+act+
+     (tips?'<div class="sub" style="margin-top:8px"><b>Braunschweig-Tipps</b> <span class="mut">(redaktionell, keine Werbung)</span></div>'+tips:'')+
+     '<button class="btn ghost w" onclick="actions.unwohl(\''+esc(a.n)+'\')">Ich fühle mich unwohl</button></div>' }
+  else if(selFree) detail='<div class="card bl" style="width:300px"><b>Unbefeuerter Ring</b><div class="sub">Hier ist Platz für einen neuen Kreis.</div>'+
+    '<button class="btn grad w" onclick="actions.fireCreateModal(\''+state.fireSel+'\')">🔥 Feuer eröffnen (1 Credit)</button></div>'
+  else detail='<div class="chiph bl">Feuer anklicken = Details · leerer Ring = eröffnen</div>'
+  const list='<div class="card br list"><div class="row sp"><b>Feuerstellen</b><span class="tag" style="color:#F59E0B;background:#F59E0B22">'+fs.length+' aktiv</span></div>'+
+   FIRE_SLOTS.map(sl=>{ const f=occ.get(sl.id); if(f){ const a=ACTIVITIES.find(v=>v.id===f.activity)||{n:f.activity,ic:'🔥',cat:''}
+      if(cat!=='Alle'&&a.cat!==cat) return ''
+      const on=state.fireSel===sl.id
+      return '<button class="litem'+(on?' on':'')+'" onclick="actions.fireSelect(\''+sl.id+'\')"><span style="font-size:16px">'+a.ic+'</span><span class="li-t grow"><b>'+esc(a.n)+'</b><i>Host: '+esc(f.host)+'</i></span><em>'+f.members+'/'+f.capacity+'</em></button>' }
+    if(cat!=='Alle') return ''
+    return '<button class="litem'+(state.fireSel===sl.id?' on':'')+'" onclick="actions.fireSelect(\''+sl.id+'\')"><span style="font-size:16px">◌</span><span class="li-t grow"><b style="color:#F59E0B">Frei — Feuer eröffnen</b></span><em>+</em></button>' }).join('')+'</div>'
   return head+tools+detail+list },
  unterlagen(){ if(!hasActiveGroup()) return '<div class="card tl" style="max-width:460px"><div class="eyebrow">Club Unterlagen</div><h2>Nur für Gruppenmitglieder</h2>'+
    '<p>Club Unterlagen sind Modul-Dokumentenräume und nur für Mitglieder mindestens einer verknüpften Lerngruppe zugänglich. 1:1-Matches haben keinen Zugriff. Kein öffentlicher Zugriff, privater Storage, keine Roh-URLs.</p>'+
@@ -3613,10 +3806,12 @@ renderer.domElement.addEventListener('pointerdown',e=>{ downAt=[e.clientX,e.clie
   lastInteract=performance.now(); invalidate() })   // On-Demand: Tap/Klick (auch Tisch-Auswahl ohne Kamerabewegung) hält 5 s wach
 renderer.domElement.addEventListener('pointerup',e=>{
   if(!downAt||Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])>6) return
-  if(state.section!=='gruppen'&&state.section!=='partner'&&state.section!=='international') return
+  if(state.section!=='gruppen'&&state.section!=='partner'&&state.section!=='international'&&state.section!=='aktivitaeten') return
   const r=renderer.domElement.getBoundingClientRect()
   mouseV.x=((e.clientX-r.left)/r.width)*2-1; mouseV.y=-((e.clientY-r.top)/r.height)*2+1
   rayc.setFromCamera(mouseV,camera)
+  if(state.section==='aktivitaeten'){ const hf=rayc.intersectObjects(fireTargets,false)[0]
+    if(hf) actions.fireSelect(hf.object.userData.fireSlot); return }
   if(state.section==='partner'){ const hp=rayc.intersectObjects(partnerTargets,false)[0]
     if(hp){ const u=hp.object.userData
       if(u.fid) actions.openTable(u.fid); else actions.connect(u.pid) } return }
@@ -3627,6 +3822,16 @@ renderer.domElement.addEventListener('pointerup',e=>{
 const labelLayer=document.getElementById('labels')
 const projV=new THREE.Vector3()
 function updateLabels(){
+  if(state.section==='aktivitaeten'){ let html=''
+    const r=renderer.domElement.getBoundingClientRect(), occ=new Map(fires().map(f=>[f.slotId,f]))
+    FIRE_SLOTS.forEach(sl=>{ projV.set(sl.x,2.6,sl.z).project(camera)
+      if(projV.z>1) return
+      const x=r.left+(projV.x*.5+.5)*r.width, y=r.top+(-projV.y*.5+.5)*r.height
+      const f=occ.get(sl.id)
+      if(f){ const a=ACTIVITIES.find(v=>v.id===f.activity)||{n:f.activity,ic:'🔥'}
+        html+='<div class="tlabel" style="left:'+x+'px;top:'+y+'px"><b>'+a.ic+' '+esc(a.n)+'</b><i style="color:#F59E0B">'+f.members+'/'+f.capacity+' · klicken</i></div>' }
+      else html+='<div class="tlabel free" style="left:'+x+'px;top:'+y+'px"><b>🔥 Feuer eröffnen</b></div>' })
+    labelLayer.innerHTML=html; return }
   if(state.section==='partner'){ let html=''
     const r=renderer.domElement.getBoundingClientRect()
     partnerGroup.children.forEach(t=>{
@@ -3732,7 +3937,7 @@ renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
   const sc=current()
   const idleFor=performance.now()-lastInteract, interacting=idleFor<5000
   /* Leerlauf-AutoRotate (Campus/Partner) VOR dem Gate: nach ~5 s Ruhe wieder sanft drehen → zählt als „Animation aktiv" und rendert weiter. */
-  if(sc===scene && !controls.autoRotate && !interacting && (state.section==='campus'||state.section==='partner')) controls.autoRotate=true
+  if(sc===scene && !controls.autoRotate && !interacting && (state.section==='campus'||state.section==='partner'||state.section==='aktivitaeten')) controls.autoRotate=true
   /* ===== On-Demand-Gate: nur rendern, wenn sich wirklich etwas ändert (größter Leerlauf-Gewinn) =====
      Wach bei: Kamerabewegung ('change'→renderNeeded), animierender Themenwelt, Benchmark/Warm-up,
      aktivem Ziehen (Boost), kürzlicher Eingabe (<5 s) oder Auto-Rotate. Sonst Leerlauf → GPU ~0. */
@@ -3769,6 +3974,7 @@ renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
   if(sc===scene){
     windUniform.value=t*sceneConfig.wind.speed                 // Wind/Wasser bleiben (billige Shader-Uniforms)
     if(!boostOn) updateLife(t)                                 // Ph3: CPU-Figuren-Posing während des Ziehens pausieren
+    if(!boostOn) flickerFires(t)                               // Feature F: Lagerfeuer-Flackern (nur gerenderte Frames, 0 Alloc)
     water.material.uniforms.time.value=t*sceneConfig.water.flowSpeed }
   perfTick(dt) // nur gerenderte Frames werten — die DPR-Stufe folgt der echten Render-Last
   const _t2 = DEBUG_PERF ? performance.now() : 0        // Sec3: Render-Phase abgrenzen
