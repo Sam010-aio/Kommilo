@@ -14,11 +14,11 @@
 /* ===== Delivery / Build-Sichtbarkeit (LIGHTNESS RESCUE Ph0) =====
    EINE Quelle der Build-Kennung — geteilt mit sw.js (Cache-Name = kommilo-v${id}). Sichtbar als
    dezenter Fuß-Stempel und im ?debug=perf-Overlay; so ist am Bildschirm ablesbar, welcher Build läuft. */
-window.__BUILD = { id: '2026.07.23-0cebda9', date: '2026-07-23', hash: '0cebda9' }; // id = Delivery-Stempel (Datum-Inhalts-Commit) — GLEICHE Zeichenkette wie BUILD in sw.js ⇒ Cache-Name = kommilo-v<id>
+window.__BUILD = { id: '2026.07.23-3a4f222', date: '2026-07-23', hash: '3a4f222' }; // id = Delivery-Stempel (Datum-Inhalts-Commit) — GLEICHE Zeichenkette wie BUILD in sw.js ⇒ Cache-Name = kommilo-v<id>
 (function(){
   // Fuß-Stempel setzen, sobald der Body existiert (robust — auch wenn die 3D-App nicht bootet)
   function stamp(){ var el=document.getElementById('buildstamp'); if(!el) return
-    el.textContent='v'+window.__BUILD.id }   // → v2026.07.23-0cebda9 (Format laut Spezifikation)
+    el.textContent='v'+window.__BUILD.id }   // → v2026.07.23-3a4f222 (Format laut Spezifikation)
   if(document.readyState!=='loading') stamp(); else addEventListener('DOMContentLoaded', stamp)
   if(!('serviceWorker' in navigator)) return
   // Selbst-enthaltener Reload-Hinweis — unabhängig vom App-Toast, wirkt auch bei kaputter/veralteter App
@@ -2207,8 +2207,11 @@ function rebuildFires(){
     const tgt=new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.4,1.6,10),new THREE.MeshBasicMaterial({visible:false}))
     tgt.position.set(sl.x,.8,sl.z); tgt.userData.fireSlot=sl.id; firesGroup.add(tgt); fireTargets.push(tgt) })
   invalidate() }
-FIRE_SLOTS.forEach(sl=>{ const l=new THREE.PointLight(0xff9a3d,0,9,2); l.position.set(sl.x,1.1,sl.z); fireLights.push(l); firesGroup.add(l) })
-rebuildFires()
+/* HOTFIX Boot-Reihenfolge: FIRE_SLOTS/state sind erst im App-Abschnitt initialisiert (TDZ!) —
+   Lichter + Erst-Build laufen daher in initFires(), aufgerufen NACH den Datendefinitionen. */
+function initFires(){
+  FIRE_SLOTS.forEach(sl=>{ const l=new THREE.PointLight(0xff9a3d,0,9,2); l.position.set(sl.x,1.1,sl.z); fireLights.push(l); firesGroup.add(l) })
+  rebuildFires() }
 /* Flammen-Flicker: null Allokationen — nur Scale/Rotation an registrierten Cones */
 function flickerFires(t){ for(let i=0;i<fireFlames.length;i++){ const fl=fireFlames[i], ph=fl.userData.fi
   const s2=1+Math.sin(t*9+ph*2.1)*.13+Math.sin(t*23+ph)*.06
@@ -2530,6 +2533,7 @@ function fires(){ const list=state.firesByUni[state.uniId]||[]; const t=Date.now
   const keep=list.filter(f=>f.expires_at>t)
   if(keep.length!==list.length){ state.firesByUni[state.uniId]=keep; if(typeof rebuildFires==='function') rebuildFires() } // Auto-Expire (Feature F)
   return keep }
+initFires() // HOTFIX: Feuer-3D erst JETZT bauen — state + FIRE_SLOTS existieren ab hier (Boot-Crash v0cebda9 behoben)
 function esc(t){ return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])) }
 function toast(title,desc,kind){ const w=document.getElementById('toasts')
   const d=document.createElement('div'); d.className='toast'
