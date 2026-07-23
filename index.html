@@ -1029,9 +1029,10 @@ function paverMat(rx,ry2){ const m2=new THREE.MeshStandardMaterial({roughness:.9
   /* Baumscheiben: Steinkante + Mulch — JEDER Baum steht in einer gefassten Scheibe; Kante skaliert */
   const pitEdgeM=new THREE.MeshStandardMaterial({color:'#9d968b',roughness:.9})
   const mulchM=new THREE.MeshStandardMaterial({color:'#4b3d2e',roughness:1})
-  treePit=(x,z,s=1)=>{ const w=1.1+s*.45
-    const e2=new THREE.Mesh(new THREE.BoxGeometry(w,.12,w),pitEdgeM); e2.position.set(x,.05,z); e2.receiveShadow=true; buildingGroup.add(e2)
-    const m2=new THREE.Mesh(new THREE.CylinderGeometry(w*.42,w*.42,.1,12),mulchM); m2.position.set(x,.075,z); buildingGroup.add(m2) }
+  treePit=(x,z,s=1)=>{ const w=1.1+s*.45, pg=new THREE.Group() // Gruppe → der C4-Validator kann Baum + Scheibe GEMEINSAM verschieben/entfernen
+    const e2=new THREE.Mesh(new THREE.BoxGeometry(w,.12,w),pitEdgeM); e2.position.set(x,.05,z); e2.receiveShadow=true; pg.add(e2)
+    const m2=new THREE.Mesh(new THREE.CylinderGeometry(w*.42,w*.42,.1,12),mulchM); m2.position.set(x,.075,z); pg.add(m2)
+    buildingGroup.add(pg); return pg }
   /* Poller an der Straßen-Nordkante */
   const siteBolls=[]
   for(let x=-24;x<=30;x+=3) siteBolls.push({x,y:.42,z:-27.4})
@@ -1141,11 +1142,13 @@ function buildHedges(){
 const branchGeo=new THREE.CylinderGeometry(.62,1,1,10); branchGeo.translate(0,.5,0)
 /* Drei Kronen-Archetypen (rund / hoch-oval / geschichtet) + gelegentliche Stammgabel —
    keine Reihe identischer Bäume mehr in Kameranähe */
+const TREE_REG=[] // C4: jeder Baum registriert sich → Build-Time-Kollisionsvalidator (validateVegetation)
 function tree(x,z,s,seed){
   let r=seed*999+7; const rnd=()=>{ r=(r*16807)%2147483647; return (r-1)/2147483646 }
   const type=Math.abs(seed)%3
   const g=new THREE.Group(); g.position.set(x,0,z); g.scale.setScalar(s)
-  treePit(x,z,s) // jeder Baum bekommt seine steingefasste Scheibe (Nutzeranweisung)
+  const pit=treePit(x,z,s) // jeder Baum bekommt seine steingefasste Scheibe (Nutzeranweisung)
+  TREE_REG.push({g,pit,x,z,s})
   const branches=[], tips=[], mids=[], up=new THREE.Vector3(0,1,0)
   const spread=type===1?.36+rnd()*.28:.62+rnd()*.48 // oval = enger, rund/geschichtet = breiter
   function grow(base,dir,len,rad,depth){
@@ -1862,7 +1865,7 @@ bike(4.5,15.6,1.2); bike(-13.5,15.8,-1.4)
   const dx=B2.x-A.x, dz=B2.z-A.z, dist=Math.hypot(dx,dz)
   const fy=7.0, ch=3.2, bw=3.0, len=dist+2.4, cx=(A.x+B2.x)/2, cz=(A.z+B2.z)/2
   const bg=new THREE.Group(); bg.position.set(cx,0,cz); bg.rotation.y=Math.atan2(-dz,dx); buildingGroup.add(bg)
-  SITE.bridge={a:[A.x,A.z],b:[B2.x,B2.z],span:dist,y:fy}
+  SITE.bridge={a:[A.x,A.z],b:[B2.x,B2.z],span:dist,y:fy}; SITE.bridgeGroup=bg
   const alu=new THREE.MeshStandardMaterial({color:'#e6e8ea',roughness:.4,metalness:.5})            // Alu-Rahmen weiß
   const spandrel=new THREE.MeshStandardMaterial({color:'#8fb0a4',roughness:.25,metalness:.3})      // grüner Brüstungs-Glasstreifen
   const glass=new THREE.MeshPhysicalMaterial({color:'#a8c6ba',roughness:.1,transparent:true,opacity:.32}) // grün getöntes Klarglas
@@ -2047,10 +2050,12 @@ for(let z=-200;z<=108;z+=13){ grassCluster(okerX(z)-OKER.halfW-OKER.slope+.6, z,
       x.fillStyle='#e9e4d5'; x.fillRect(fx-3,fy-3,28,3); x.fillRect(fx-3,fy+34,28,3) }
     const t=tx(c); return t }
   const roofM2=new THREE.MeshStandardMaterial({color:'#54504a',roughness:.95})
+  SITE.eastHouses=[]
   ;[['#d9c47a',108,-150,16,13],['#cfc6b4',110,-116,18,10],['#d9c47a',108,-78,15,12.5],['#c9b998',111,-44,20,10.5],['#d3c8b2',109,4,16,12],['#cbbd9d',110,44,18,10.5]].forEach(([col,hx,hz,hw,hh2])=>{
     const m=new THREE.MeshStandardMaterial({map:facTex(col),roughness:.85})
     const b=new THREE.Mesh(new THREE.BoxGeometry(hw,hh2,12),m); b.position.set(hx,hh2/2,hz); b.castShadow=true; b.receiveShadow=true; buildingGroup.add(b)
-    const r=new THREE.Mesh(new THREE.BoxGeometry(hw+.8,1.6,13),roofM2); r.position.set(hx,hh2+.8,hz); r.castShadow=true; buildingGroup.add(r) }) }
+    const r=new THREE.Mesh(new THREE.BoxGeometry(hw+.8,1.6,13),roofM2); r.position.set(hx,hh2+.8,hz); r.castShadow=true; buildingGroup.add(r)
+    SITE.eastHouses.push({x:hx,z:hz,w:hw,h:hh2}) }) }
 { /* Holzsteg (Gestaltungselement, Dossier B8: „weiter nördlich, mit Widerlagern in den Böschungen"):
      Gruppe quert den Fluss O-W bei z=−140; lokale Spannachse z → Welt-x via 90°-Drehung. */
   const wb=new THREE.Group(); wb.position.set(okerX(-140),0,-140); wb.rotation.y=Math.PI/2; buildingGroup.add(wb)
@@ -3695,6 +3700,36 @@ renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
     const d=document.createElement('span'); d.id='bellDot'
     d.style.cssText='position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:99px;background:#EF4444;display:none'
     bell.appendChild(d) } }
+/* ===== C4 VEGETATIONSGESETZ — Build-Time-Kollisionsvalidator =====
+   KEIN Baum darf Gebäude/Brücke durchdringen. Für jeden registrierten Baum wird eine Kronen-
+   AABB (r≈3,2·s, H≈8,5·s) gegen alle Gebäude-AABBs geprüft; Treffer werden erst radial
+   verschoben (4–10 m, 8 Richtungen), sonst entfernt (Baum + Baumscheibe). Ergebnis-Log +
+   SITE.vegViolations für die Assertion. Kronenansatz ≥ 3 m ist durch die Archetypen (h0 2,5–4,1
+   × s ≥ 1,25) erfüllt; kein Baum (H ≤ 8,5·3 m) erreicht die Turmhöhe (47 m). */
+function validateVegetation(){
+  const boxes=[]
+  const collect=o=>{ if(!o) return; o.updateWorldMatrix(true,true); boxes.push(new THREE.Box3().setFromObject(o)) }
+  ;[SITE.alt,SITE.tower,SITE.yellow,SITE.lib,SITE.bib,SITE.forum,SITE.bridgeGroup,SITE.pergola].forEach(collect)
+  boxes.push(new THREE.Box3(new THREE.Vector3(-HX-2.6,0,-HZ-2.6),new THREE.Vector3(HX+2.6,12,HZ+2.6))) // Studierendenhaus + Balkon
+  if(SITE.roadBridge){ const rb=SITE.roadBridge
+    boxes.push(new THREE.Box3(new THREE.Vector3(rb.x-10.6,-3,rb.z-7.2),new THREE.Vector3(rb.x+10.6,1.6,rb.z+7.2))) }
+  ;(SITE.eastHouses||[]).forEach(hs=>boxes.push(new THREE.Box3(new THREE.Vector3(hs.x-hs.w/2-.6,0,hs.z-6.8),new THREE.Vector3(hs.x+hs.w/2+.6,hs.h+2,hs.z+6.8))))
+  const tb=new THREE.Box3(), tmin=new THREE.Vector3(), tmax=new THREE.Vector3()
+  const hits=b=>{ for(let i=0;i<boxes.length;i++) if(b.intersectsBox(boxes[i])) return true; return false }
+  const mkBox=(x,z,s)=>{ const r2=3.2*s; tmin.set(x-r2,0,z-r2); tmax.set(x+r2,8.5*s,z+r2); tb.set(tmin,tmax); return tb }
+  let moved=0, removed=0
+  TREE_REG.forEach(t=>{
+    if(!hits(mkBox(t.x,t.z,t.s))) return
+    let done=false
+    for(const d of [4,6,8,10]){ for(let k=0;k<8&&!done;k++){ const a=k*Math.PI/4
+      const nx=t.x+Math.cos(a)*d, nz=t.z+Math.sin(a)*d
+      if(!hits(mkBox(nx,nz,t.s))){ t.g.position.set(nx,0,nz); t.pit.position.set(nx-t.x,0,nz-t.z); t.x=nx; t.z=nz; moved++; done=true } }
+      if(done) break }
+    if(!done){ buildingGroup.remove(t.g); buildingGroup.remove(t.pit); removed++ } })
+  let remain=0; TREE_REG.forEach(t=>{ if(t.g.parent&&hits(mkBox(t.x,t.z,t.s))) remain++ })
+  SITE.vegViolations=remain
+  console.info('[VEG] '+TREE_REG.length+' Bäume geprüft — '+moved+' verschoben, '+removed+' entfernt, '+remain+' Verstöße verbleibend') }
+validateVegetation()
 /* Hecken & Gras-Cluster einmalig instanzieren — alle Reihen/Cluster sind ab hier platziert */
 HEDGE_RUNS.forEach(r=>hedgeRun(...r))
 buildHedges(); buildGrassClusters()
