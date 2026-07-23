@@ -1917,6 +1917,7 @@ bike(4.5,15.6,1.2); bike(-13.5,15.8,-1.4)
   const fy=7.0, ch=3.2, bw=3.0, len=dist+2.4, cx=(A.x+B2.x)/2, cz=(A.z+B2.z)/2
   const bg=new THREE.Group(); bg.position.set(cx,0,cz); bg.rotation.y=Math.atan2(-dz,dx); buildingGroup.add(bg)
   SITE.bridge={a:[A.x,A.z],b:[B2.x,B2.z],span:dist,y:fy}; SITE.bridgeGroup=bg
+  bg.visible=false // V2-Satellit: Altgebäude/Turm liegen jetzt ~90 m auseinander → kein plausibler kurzer Steg; ausgeblendet statt „quer über den Rasen" zu schweben
   const alu=new THREE.MeshStandardMaterial({color:'#e6e8ea',roughness:.4,metalness:.5})            // Alu-Rahmen weiß
   const spandrel=new THREE.MeshStandardMaterial({color:'#8fb0a4',roughness:.25,metalness:.3})      // grüner Brüstungs-Glasstreifen
   const glass=new THREE.MeshPhysicalMaterial({color:'#a8c6ba',roughness:.1,transparent:true,opacity:.32}) // grün getöntes Klarglas
@@ -2218,21 +2219,14 @@ for(let z=-12;z<12;z+=4){ seg([HX+BAL,F1+1.18,z],[HX+BAL,F1+1.18,z+4],.35,['sh']
 for(let x=-14;x<14;x+=4.5) seg([x,F0+2.6,HZ+BAL-.3],[x+4.5,F0+2.6,HZ+BAL-.3],.5,['sh'])
 seg([-8,F0+3.05,HZ+OV-.6],[8,F0+3.05,HZ+OV-.6],.55,['sh'])
 seg([-8,F0+3.05,HZ+1.2],[8,F0+3.05,HZ+1.2],.45,['sh'])
-/* (2) Girlanden entlang der Brücken-Dachkanten (diagonale Achse aus SITE.bridge) */
-{ const [ax2,az2]=SITE.bridge.a, [bx2,bz2]=SITE.bridge.b, by=SITE.bridge.y+3.7
-  const dx2=bx2-ax2, dz2=bz2-az2, L=Math.hypot(dx2,dz2), ux=dx2/L, uz=dz2/L, px2=-uz, pz2=ux // Einheits- + Senkrechtvektor
-  const nSeg=Math.ceil(L/3.5)
-  for(let i=0;i<nSeg;i++){ const t0=i/nSeg, t1=(i+1)/nSeg
-    for(const sd of [-1.1,1.1]){ seg([ax2+dx2*t0+px2*sd,by,az2+dz2*t0+pz2*sd],[ax2+dx2*t1+px2*sd,by,az2+dz2*t1+pz2*sd],.28,['bridge']) } } }
-/* (3) Platz-Spans an EIGENEN Masten: SH-Vorplatz + Audimax-Plaza (2700-K-Feststimmung) */
+/* (2) Brücken-Girlanden entfallen (Steg ausgeblendet, V2). */
+/* (3) Platz-Spans an EIGENEN Masten: nur noch SH-Vorplatz (Audimax-Plaza-Masten lagen an der alten Lage) */
 function lightPole(x,z,h){ const p=new THREE.Mesh(new THREE.CylinderGeometry(.06,.08,h,10),new THREE.MeshStandardMaterial({color:'#2b2d31',roughness:.55,metalness:.35}))
   p.position.set(x,h/2,z); p.castShadow=true; buildingGroup.add(p)
   const arm=new THREE.Mesh(new THREE.BoxGeometry(.5,.06,.06),new THREE.MeshStandardMaterial({color:'#2b2d31',roughness:.55,metalness:.35}))
   arm.position.set(x,h-.08,z); buildingGroup.add(arm); return [x,h-.05,z] }
-{ const P1=lightPole(-22,9,4.4), P2=lightPole(-13,15.8,4.2), P3=lightPole(18,21,4.6)
-  seg([-6,F0+3.1,HZ],P1,1.1,['sh']); seg(P1,P2,.8); seg([4,F0+3.1,HZ],P3,1.2,['sh'])
-  const A1=lightPole(-12,-160.5,3.8), A2p=lightPole(2,-157.5,3.8), A3=lightPole(16,-160.5,3.8)
-  seg(A1,A2p,.7); seg(A2p,A3,.7) }
+{ const P1=lightPole(-24,9,4.4), P2=lightPole(-18,17,4.2) // SH-Westrasen, frei von der Pockelsstraße
+  seg([-6,F0+3.1,HZ],P1,1.1,['sh']); seg(P1,P2,.8) }
 /* Build + Validierung: Parabel-Kettenlinie, Birnen ~0,35 m Raster, Segment-vs-AABB-Prüfung */
 { const LB=siteBoxes(), probe=new THREE.Vector3()
   let dropped=0, raised=0
@@ -3373,7 +3367,7 @@ function current(){ const s=state.section
   if(s==='einstellungen') return gearScene
   if(s==='campus'||s==='gruppen'||s==='partner'||s==='aktivitaeten') return scene
   return ambScene }
-const CAMS={campus:{p:[34,3.2,27],t:[0,4,0]},aktivitaeten:{p:[-38,9,22],t:[-14,1,8]},gruppen:{p:[26,5.2,38],t:[0,3.4,0]},partner:{p:[22,6.5,30],t:[0,2.2,0]},international:{p:[0,1.2,7],t:[0,0,0]},profil:{p:[0,1.5,3.6],t:[0,1,0]},matches:{p:[2.6,1.9,3.4],t:[0,1.1,0]},unterlagen:{p:[0,1.9,4.6],t:[0,1.2,-.6]},einladungen:{p:[0,1.6,4.8],t:[0,1.2,0]},einstellungen:{p:[.4,1.5,4.6],t:[.3,1.4,0]},amb:{p:[0,0,10],t:[0,0,0]}}
+const CAMS={campus:{p:[30,2.6,15],t:[2,2,-10]},aktivitaeten:{p:[-30,7,18],t:[-14,1,4]},gruppen:{p:[26,5.2,38],t:[0,3.4,0]},partner:{p:[22,6.5,30],t:[0,2.2,0]},international:{p:[0,1.2,7],t:[0,0,0]},profil:{p:[0,1.5,3.6],t:[0,1,0]},matches:{p:[2.6,1.9,3.4],t:[0,1.1,0]},unterlagen:{p:[0,1.9,4.6],t:[0,1.2,-.6]},einladungen:{p:[0,1.6,4.8],t:[0,1.2,0]},einstellungen:{p:[.4,1.5,4.6],t:[.3,1.4,0]},amb:{p:[0,0,10],t:[0,0,0]}}
 /* Tag/Nacht: die Sonnenscheibe liefert der Himmels-Shader; Mond + Sterne nur nachts */
 const moonMesh=new THREE.Mesh(new THREE.SphereGeometry(5,20,16),new THREE.MeshBasicMaterial({color:0xe8ecf4,fog:false}))
 const mShadow=new THREE.Mesh(new THREE.SphereGeometry(4.6,20,16),new THREE.MeshBasicMaterial({color:0x10182a,fog:false}))
