@@ -14,11 +14,11 @@
 /* ===== Delivery / Build-Sichtbarkeit (LIGHTNESS RESCUE Ph0) =====
    EINE Quelle der Build-Kennung — geteilt mit sw.js (Cache-Name = kommilo-v${id}). Sichtbar als
    dezenter Fuß-Stempel und im ?debug=perf-Overlay; so ist am Bildschirm ablesbar, welcher Build läuft. */
-window.__BUILD = { id: '2026.07.23-d53dbc5', date: '2026-07-23', hash: 'd53dbc5' }; // id = Delivery-Stempel (Datum-Inhalts-Commit) — GLEICHE Zeichenkette wie BUILD in sw.js ⇒ Cache-Name = kommilo-v<id>
+window.__BUILD = { id: '2026.07.23-f5182e1', date: '2026-07-23', hash: 'f5182e1' }; // id = Delivery-Stempel (Datum-Inhalts-Commit) — GLEICHE Zeichenkette wie BUILD in sw.js ⇒ Cache-Name = kommilo-v<id>
 (function(){
   // Fuß-Stempel setzen, sobald der Body existiert (robust — auch wenn die 3D-App nicht bootet)
   function stamp(){ var el=document.getElementById('buildstamp'); if(!el) return
-    el.textContent='v'+window.__BUILD.id }   // → v2026.07.23-d53dbc5 (Format laut Spezifikation)
+    el.textContent='v'+window.__BUILD.id }   // → v2026.07.23-f5182e1 (Format laut Spezifikation)
   if(document.readyState!=='loading') stamp(); else addEventListener('DOMContentLoaded', stamp)
   if(!('serviceWorker' in navigator)) return
   // Selbst-enthaltener Reload-Hinweis — unabhängig vom App-Toast, wirkt auch bei kaputter/veralteter App
@@ -1842,14 +1842,10 @@ bike(4.5,15.6,1.2); bike(-13.5,15.8,-1.4)
        weißer Betonrahmen ragt ~1,35 m aus der Wand, dunkle Scheibe innen; Reihe entlang der oberen Fassade. */
     { const wy=gH+.6+boxH*.52, prj=1.35, ww=3.0
       const whiteWin=new THREE.MeshStandardMaterial({color:'#f4f3ef',roughness:.55})   // Owner: völlig WEISS, keine dunkle Mitte
-      // Langseiten: 5 Fensterkästen DIREKT NEBENEINANDER, links beginnend (Owner Bild 1)
-      for(const side of [1,-1]) for(let i=0;i<5;i++){ const x=-LW/2+2.6+ww*(i+.5)
-        const fr=new THREE.Group(); fr.position.set(x,wy,side*LF); fr.rotation.x=-side*.42; ulib.add(fr)
-        const frame=new THREE.Mesh(new THREE.BoxGeometry(ww-.12,2.9,prj),whiteWin); frame.position.z=side*prj/2; frame.castShadow=true; fr.add(frame) }
-      // Stirnseiten: je 5 weiße Kästen direkt nebeneinander
-      for(const side of [1,-1]) for(let i=0;i<5;i++){ const z=-LD/2+2.6+ww*(i+.5)
-        const fr=new THREE.Group(); fr.position.set(side*LW/2,wy,z); fr.rotation.z=side*.42; ulib.add(fr)
-        const frame=new THREE.Mesh(new THREE.BoxGeometry(prj,2.9,ww-.12),whiteWin); frame.position.x=side*prj/2; frame.castShadow=true; fr.add(frame) } }
+      // Owner: NUR die markierte Front (zur Straße/West, lokal +z): 5 Fensterkästen DIREKT NEBENEINANDER, links beginnend
+      for(let i=0;i<5;i++){ const x=-LW/2+2.6+ww*(i+.5)
+        const fr=new THREE.Group(); fr.position.set(x,wy,LF); fr.rotation.x=-.42; ulib.add(fr)
+        const frame=new THREE.Mesh(new THREE.BoxGeometry(ww-.12,2.9,prj),whiteWin); frame.position.z=prj/2; frame.castShadow=true; fr.add(frame) } }
     /* Sheddach-Zahnung (Dreiecksprismen quer über die Tiefe) entlang der Dachkante — wie Foto */
     { const NS=Math.round(LW/5.2), sy=gH+.6+boxH+.55, prism=new THREE.CylinderGeometry(1.0,1.0,LD-1.5,3)
       for(let i=0;i<NS;i++){ const s=new THREE.Mesh(prism,slabM); s.rotation.x=Math.PI/2; s.position.set(-LW/2+(LW/NS)*(i+.5),sy,0); s.castShadow=true; ulib.add(s) } }
