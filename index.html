@@ -14,11 +14,11 @@
 /* ===== Delivery / Build-Sichtbarkeit (LIGHTNESS RESCUE Ph0) =====
    EINE Quelle der Build-Kennung — geteilt mit sw.js (Cache-Name = kommilo-v${id}). Sichtbar als
    dezenter Fuß-Stempel und im ?debug=perf-Overlay; so ist am Bildschirm ablesbar, welcher Build läuft. */
-window.__BUILD = { id: '2026.07.23-65643af', date: '2026-07-23', hash: '65643af' }; // id = Delivery-Stempel (Datum-Inhalts-Commit) — GLEICHE Zeichenkette wie BUILD in sw.js ⇒ Cache-Name = kommilo-v<id>
+window.__BUILD = { id: '2026.07.23-813e72f', date: '2026-07-23', hash: '813e72f' }; // id = Delivery-Stempel (Datum-Inhalts-Commit) — GLEICHE Zeichenkette wie BUILD in sw.js ⇒ Cache-Name = kommilo-v<id>
 (function(){
   // Fuß-Stempel setzen, sobald der Body existiert (robust — auch wenn die 3D-App nicht bootet)
   function stamp(){ var el=document.getElementById('buildstamp'); if(!el) return
-    el.textContent='v'+window.__BUILD.id }   // → v2026.07.23-65643af (Format laut Spezifikation)
+    el.textContent='v'+window.__BUILD.id }   // → v2026.07.23-813e72f (Format laut Spezifikation)
   if(document.readyState!=='loading') stamp(); else addEventListener('DOMContentLoaded', stamp)
   if(!('serviceWorker' in navigator)) return
   // Selbst-enthaltener Reload-Hinweis — unabhängig vom App-Toast, wirkt auch bei kaputter/veralteter App
@@ -3273,11 +3273,19 @@ const actions={
    const bad=modCheck(cap)||modCheck(mod)||modCheck(act)
    if(bad){ const r=modStrike(bad,cap||mod||act); if(r.banned){ closeModal(); render() } return }
    const go=document.getElementById('fd-go'); const reset=()=>{ if(go){ go.disabled=false; go.textContent='Posten' } }
-   const finish=(type,path,thumb)=>{ window.__sb.from('posts').insert({author:SB_USER.id,type,storage_path:path,thumb_path:thumb||null,
-     caption:cap||null,module_tag:mod||null,activity_tag:act||null,place_tag:place||null}).then(r=>{
-     closeModal(); PULS.optimistic=null
-     if(r.error){ pulsRender(); toast('Posten fehlgeschlagen','Bitte später erneut versuchen.','info'); return }
-     toast('Gepostet ✓','Dein Beitrag pulsiert jetzt auf dem Campus.'); feedLoad(true) }).catch(()=>{ closeModal(); PULS.optimistic=null; toast('Posten fehlgeschlagen','','info') }) }
+   const finish=(type,path,thumb)=>{
+     const full={author:SB_USER.id,type,storage_path:path,thumb_path:thumb||null,caption:cap||null,module_tag:mod||null,activity_tag:act||null,place_tag:place||null}
+     const base={author:SB_USER.id,type,storage_path:path,caption:cap||null,activity_tag:act||null} // nur 01-feed.sql-Spalten
+     const ok=()=>{ closeModal(); PULS.optimistic=null; toast('Gepostet ✓','Dein Beitrag pulsiert jetzt auf dem Campus.'); feedLoad(true) }
+     const fail=msg=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Posten fehlgeschlagen',String(msg||'Bitte später erneut versuchen.').slice(0,140),'info') }
+     window.__sb.from('posts').insert(full).then(r=>{
+       if(!r.error){ ok(); return }
+       const msg=String(r.error.message||r.error.hint||'')
+       if(/column|schema cache|thumb_path|module_tag|place_tag/i.test(msg)){ // 04-puls.sql noch nicht ausgeführt → Basis-Insert, damit der Beitrag TROTZDEM landet
+         window.__sb.from('posts').insert(base).then(r2=>{ if(r2.error){ fail(r2.error.message); return }
+           closeModal(); PULS.optimistic=null; toast('Gepostet ✓','Ohne Tags/Vorschau — führe 04-puls.sql in Supabase aus, um alle Puls-Funktionen zu aktivieren.'); feedLoad(true) }).catch(()=>fail())
+         return }
+       fail(msg) }).catch(()=>fail()) }
    if(!f){ if(go){ go.disabled=true; go.textContent='Postet …' } PULS.optimistic={cap}; pulsRender(); finish('text',null,null); return }
    const okImg=['image/jpeg','image/png'], okVid=['video/mp4','video/webm'], isVid=okVid.includes(f.type)
    if(!isVid&&!okImg.includes(f.type)){ toast('Dateityp nicht erlaubt','Nur JPG, PNG, MP4 oder WebM.','info'); return }
@@ -3296,7 +3304,7 @@ const actions={
            .catch(()=>finish(isVid?'video':'image',path,null)) }) }).catch(()=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info') }) }
    if(isVid){ const v=document.createElement('video'); v.preload='metadata'
      v.onloadedmetadata=()=>{ URL.revokeObjectURL(v.src)
-       if(v.duration>61){ toast('Video zu lang','Max. 60 Sekunden.','info'); PULS.optimistic=null; pulsRender(); reset(); return } doUpload() }
+       if(isFinite(v.duration)&&v.duration>61){ toast('Video zu lang','Max. 60 Sekunden.','info'); PULS.optimistic=null; pulsRender(); reset(); return } doUpload() } // Infinity/NaN (z. B. MediaRecorder-WebM) nicht fälschlich blocken — Größe deckelt schon
      v.onerror=()=>{ doUpload() }; v.src=URL.createObjectURL(f) }
    else doUpload() },
  pulsComments(pid){ if(!window.__sb||!SB_USER){ toast('Bitte einloggen','','info'); return }
