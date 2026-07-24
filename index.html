@@ -4287,12 +4287,110 @@ actions.accept=function(iid){ const i=state.invitations.find(x=>x.id===iid); if(
 actions.decline=function(iid){ const i=state.invitations.find(x=>x.id===iid); state.invitations=state.invitations.filter(x=>x.id!==iid)
   notify('Einladung abgelehnt',(i?'„'+i.group+'“':'')+' — Ablehnen ist kostenlos.','invite'); render() }
 
+/* ===== IN-WORLD PULS (Owner-Brief 3): Litfaßsäule, Puls-Board, Ort-Bubbles.
+   Performance-Gesetz: NUR Texturen (kein In-World-Video-Decode), Bilder laden lazy in die Canvas,
+   Rotation/Bobbing/Board-Zyklus laufen ausschließlich auf ohnehin gerenderten Frames (On-Demand). ===== */
+function pulsPosterCanvas(w,h,p2){ const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d')
+  const ga=(p2&&p2.grad)||['#4F46E5','#2DD4BF'], g=x.createLinearGradient(0,0,w,h)
+  g.addColorStop(0,ga[0]); g.addColorStop(1,ga[1]); x.fillStyle=g; x.fillRect(0,0,w,h)
+  x.textAlign='center'; x.fillStyle='rgba(255,255,255,.95)'
+  x.font='700 '+Math.round(h*.3)+'px "Plus Jakarta Sans",sans-serif'; x.fillText((p2&&p2.ic)||'🎬',w/2,h*.4)
+  x.font='600 '+Math.round(h*.062)+'px "Plus Jakarta Sans",sans-serif'
+  x.fillText(String((p2&&p2.caption)||'Campus Puls').slice(0,42),w/2,h*.58,w*.86)
+  x.fillStyle='rgba(255,255,255,.75)'; x.font='500 '+Math.round(h*.05)+'px sans-serif'
+  x.fillText(p2&&p2.seed?'Kommilo-Redaktion':(p2?'Studi-'+String(p2.author||'').slice(0,4):''),w/2,h*.68,w*.86)
+  return c }
+const pulsGroup=new THREE.Group(); pulsGroup.name='pulsWorld'; scene.add(pulsGroup)
+const pulsSauleCv=document.createElement('canvas'); pulsSauleCv.width=768; pulsSauleCv.height=384
+const pulsSauleTex=new THREE.CanvasTexture(pulsSauleCv); pulsSauleTex.colorSpace=THREE.SRGBColorSpace
+const pulsSauleMat=new THREE.MeshStandardMaterial({map:pulsSauleTex,roughness:.6,emissive:0xffffff,emissiveMap:pulsSauleTex,emissiveIntensity:.06})
+const pulsSaule=new THREE.Group(); pulsSaule.name='pulsSaule'
+{ const cfg=sceneConfig.puls; pulsSaule.position.set(cfg.saule.x,0,cfg.saule.z) // Vorplatz Süd, am Gehweg — klassische Litfaßsäule
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(.72,.78,.3,24),new THREE.MeshStandardMaterial({color:'#4a4d52',roughness:.9}))
+  base.position.y=.15; base.castShadow=true; pulsSaule.add(base)
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.6,.6,2.5,24,1,true),pulsSauleMat)
+  body.position.y=1.55; body.castShadow=true; pulsSaule.add(body)
+  const cap=new THREE.Mesh(new THREE.SphereGeometry(.68,20,10,0,Math.PI*2,0,Math.PI/2),new THREE.MeshStandardMaterial({color:'#3f4246',roughness:.85}))
+  cap.position.y=2.8; cap.castShadow=true; pulsSaule.add(cap)
+  const hit=new THREE.Mesh(new THREE.CylinderGeometry(.85,.85,3.2,10),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}))
+  hit.position.y=1.6; hit.userData.pulsOpen=1; pulsSaule.add(hit)
+  pulsGroup.add(pulsSaule) }
+const pulsBoardCv=document.createElement('canvas'); pulsBoardCv.width=768; pulsBoardCv.height=256
+const pulsBoardTex=new THREE.CanvasTexture(pulsBoardCv); pulsBoardTex.colorSpace=THREE.SRGBColorSpace
+let pulsBoardList=[], pulsBoardIdx=0, pulsBoardT=0
+{ const cfg=sceneConfig.puls; const bg2=new THREE.Group(); bg2.name='pulsBoard'
+  bg2.position.set(cfg.board.x,cfg.board.y,cfg.board.z); bg2.rotation.y=Math.PI // Innen-Screen an der Süd-Eingangswand, blickt in den Raum
+  const frame=new THREE.Mesh(new THREE.BoxGeometry(3.4,1.25,.07),new THREE.MeshStandardMaterial({color:'#26282c',roughness:.5,metalness:.3}))
+  bg2.add(frame)
+  const screenM=new THREE.MeshBasicMaterial({map:pulsBoardTex}) // Basic = selbstleuchtend wie ein echtes Info-Display (auch nachts lesbar)
+  const screen=new THREE.Mesh(new THREE.PlaneGeometry(3.2,1.07),screenM); screen.position.z=.045; bg2.add(screen)
+  const hitB=new THREE.Mesh(new THREE.PlaneGeometry(3.4,1.25),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}))
+  hitB.position.z=.05; hitB.userData.pulsOpen=1; bg2.add(hitB)
+  pulsGroup.add(bg2); pulsGroup.userData.boardHit=hitB; pulsGroup.userData.sauleHit=pulsSaule.children[3] }
+const pulsBubbles=[]
+function pulsBubbleCanvas(p2){ const c=document.createElement('canvas'); c.width=192; c.height=224; const x=c.getContext('2d')
+  x.fillStyle='rgba(255,255,255,.96)'; x.beginPath(); x.roundRect(4,4,184,196,14); x.fill()   // Polaroid-Rahmen
+  x.beginPath(); x.moveTo(84,200); x.lineTo(108,200); x.lineTo(96,220); x.fill()             // Sprechblasen-Spitze zum Ort
+  const fb=pulsPosterCanvas(164,140,p2); x.drawImage(fb,14,14,164,140)
+  x.fillStyle='#4F46E5'; x.beginPath(); x.arc(26,172,7,0,Math.PI*2); x.fill()                // Autor-Punkt (Alias-Farbe)
+  x.fillStyle='#221c35'; x.font='700 15px "Plus Jakarta Sans",sans-serif'; x.textAlign='left'
+  x.fillText(p2.seed?'Redaktion':'Studi-'+String(p2.author||'').slice(0,4),40,177,138)
+  return c }
+function pulsWorldRefresh(){ const items=(FEED.items.length?FEED.items:SEED_POSTS)
+  const x=pulsSauleCv.getContext('2d')   // Litfaßsäule: 3 Plakat-Spalten rund um den Zylinder
+  for(let i=0;i<3;i++){ const p2=items[i%items.length]
+    x.drawImage(pulsPosterCanvas(256,384,p2),i*256,0)
+    const u=p2&&(p2._thumb||(p2.type==='image'&&p2._url))
+    if(u){ const im=new Image(); im.crossOrigin='anonymous'
+      im.onload=((ii,img)=>()=>{ try{ x.drawImage(img,ii*256,0,256,384); pulsSauleTex.needsUpdate=true; invalidate() }catch(e){} })(i,im)
+      im.src=p2._thumb||p2._url } }
+  pulsSauleTex.needsUpdate=true
+  pulsBoardList=items.slice(0,5); pulsBoardIdx=0; pulsBoardDraw()
+  pulsBubbles.forEach(s=>{ pulsGroup.remove(s); s.material.map.dispose(); s.material.dispose() }); pulsBubbles.length=0
+  pulsTargets.length=0; pulsTargets.push(pulsGroup.userData.sauleHit,pulsGroup.userData.boardHit)
+  const tagged=items.filter(p2=>p2.place_tag&&PULS_PLACES[p2.place_tag]).slice(0,sceneConfig.puls.maxBubbles)
+  tagged.forEach((p2,i)=>{ const a=PULS_PLACES[p2.place_tag]                     // neueste zuerst; ältere hängen höher & blasser
+    const m=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(pulsBubbleCanvas(p2)),transparent:true,opacity:Math.max(.45,1-i*.14),depthTest:true})
+    m.map.colorSpace=THREE.SRGBColorSpace
+    const sp=new THREE.Sprite(m); sp.scale.set(1.7,1.98,1)
+    sp.position.set(a.x+(i%2? .9:-.7)*Math.ceil(i/2),a.y+i*.5,a.z); sp.userData={pulsId:p2.id,y0:a.y+i*.5}
+    pulsGroup.add(sp); pulsBubbles.push(sp); pulsTargets.push(sp) })
+  invalidate() }
+function pulsBoardDraw(){ const x=pulsBoardCv.getContext('2d'), p2=pulsBoardList[pulsBoardIdx]; if(!p2) return
+  x.fillStyle='#101223'; x.fillRect(0,0,768,256)
+  x.fillStyle='#2DD4BF'; x.font='800 26px "Plus Jakarta Sans",sans-serif'; x.textAlign='left'
+  x.fillText('◉ CAMPUS PULS',24,44)
+  x.fillStyle='rgba(255,255,255,.55)'; x.font='600 17px sans-serif'; x.fillText('heute auf dem Campus',24,70)
+  x.drawImage(pulsPosterCanvas(280,150,p2),24,86)
+  const u=p2._thumb||(p2.type==='image'&&p2._url)
+  if(u){ const im=new Image(); im.crossOrigin='anonymous'
+    im.onload=()=>{ try{ x.drawImage(im,24,86,280,150); pulsBoardTex.needsUpdate=true; invalidate() }catch(e){} }; im.src=u }
+  x.fillStyle='#fff'; x.font='600 20px "Plus Jakarta Sans",sans-serif'
+  const cap=String(p2.caption||'').slice(0,60); x.fillText(cap,328,120,410)
+  x.fillStyle='rgba(255,255,255,.6)'; x.font='500 16px sans-serif'
+  x.fillText(p2.seed?'Kommilo-Redaktion · Starter':'Studi-'+String(p2.author||'').slice(0,4),328,150,410)
+  for(let i=0;i<pulsBoardList.length;i++){ x.fillStyle=i===pulsBoardIdx?'#2DD4BF':'rgba(255,255,255,.25)'
+    x.beginPath(); x.arc(340+i*20,208,5,0,Math.PI*2); x.fill() }
+  pulsBoardTex.needsUpdate=true }
+function pulsWorldTick(t,dt){ if(!pulsGroup.visible) return   // NUR auf gerenderten Frames aufgerufen (On-Demand-Gesetz)
+  pulsSaule.rotation.y+=dt*sceneConfig.puls.sauleSpeed
+  pulsSauleMat.emissiveIntensity=state.mode==='nacht'?sceneConfig.puls.sauleNightGlow:.06
+  if(t-pulsBoardT>sceneConfig.puls.boardSwapSec&&pulsBoardList.length>1){ pulsBoardT=t; pulsBoardIdx=(pulsBoardIdx+1)%pulsBoardList.length; pulsBoardDraw() }
+  for(let i=0;i<pulsBubbles.length;i++){ const s=pulsBubbles[i]; s.position.y=s.userData.y0+Math.sin(t*.9+i*1.7)*.1 } }
+pulsWorldRefresh() // Erstbefüllung mit den Redaktions-Startern — die Welt erzählt sofort „hier ist Leben"
 const rayc=new THREE.Raycaster(), mouseV=new THREE.Vector2()
 let downAt=null
 renderer.domElement.addEventListener('pointerdown',e=>{ downAt=[e.clientX,e.clientY]
   lastInteract=performance.now(); invalidate() })   // On-Demand: Tap/Klick (auch Tisch-Auswahl ohne Kamerabewegung) hält 5 s wach
 renderer.domElement.addEventListener('pointerup',e=>{
   if(!downAt||Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])>6) return
+  if(pulsWorldSection()&&pulsFlagOn()&&pulsTargets.length){ // In-World-Puls zuerst (auch auf Campus, wo sonst kein Raycast läuft)
+    const r2=renderer.domElement.getBoundingClientRect()
+    mouseV.x=((e.clientX-r2.left)/r2.width)*2-1; mouseV.y=-((e.clientY-r2.top)/r2.height)*2+1
+    rayc.setFromCamera(mouseV,camera)
+    const hb=rayc.intersectObjects(pulsTargets,false)[0]
+    if(hb){ const id=hb.object.userData.pulsId
+      pulsOpenTheater(id?Math.max(0,pulsItems().findIndex(p2=>p2.id===id)):0); return } }
   if(state.section!=='gruppen'&&state.section!=='partner'&&state.section!=='international'&&state.section!=='aktivitaeten') return
   const r=renderer.domElement.getBoundingClientRect()
   mouseV.x=((e.clientX-r.left)/r.width)*2-1; mouseV.y=-((e.clientY-r.top)/r.height)*2+1
@@ -4462,6 +4560,7 @@ renderer.setAnimationLoop(()=>{ const t=appClock.getElapsedTime()
     windUniform.value=t*sceneConfig.wind.speed                 // Wind/Wasser bleiben (billige Shader-Uniforms)
     if(!boostOn) updateLife(t)                                 // Ph3: CPU-Figuren-Posing während des Ziehens pausieren
     if(!boostOn) flickerFires(t)                               // Feature F: Lagerfeuer-Flackern (nur gerenderte Frames, 0 Alloc)
+    pulsWorldTick(t,dt)                                        // Puls: Säulen-Drehung/Board/Bubbles — nur auf gerenderten Frames
     water.material.uniforms.time.value=t*sceneConfig.water.flowSpeed }
   perfTick(dt) // nur gerenderte Frames werten — die DPR-Stufe folgt der echten Render-Last
   const _t2 = DEBUG_PERF ? performance.now() : 0        // Sec3: Render-Phase abgrenzen
