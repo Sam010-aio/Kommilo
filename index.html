@@ -256,6 +256,28 @@ input:focus,select:focus{border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,22
 #fd-prev{margin:6px 0}
 #fd-prev img{width:100%;max-height:160px;object-fit:cover;border-radius:12px}
 #fd-prev .fd-vchip{display:inline-flex;align-items:center;gap:6px;background:rgba(79,70,229,.1);color:#4F46E5;border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700}
+/* Geschlechts-Räume: 3-Kachel-Selektor, Grund-Chips, farbenblind-sichere Badges (Icon + Text) */
+.gp-tiles{display:flex;gap:8px;margin:4px 0 8px}
+.gp-tile{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border:1.5px solid rgba(34,28,53,.12);border-radius:14px;cursor:pointer;background:#fff;transition:border-color .15s,background .15s;text-align:center}
+.gp-tile input{position:absolute;opacity:0;width:0;height:0}
+.gp-tile .gp-ic{font-size:22px;line-height:1}
+.gp-tile b{font-size:11.5px;font-weight:700;color:#221c35}
+.gp-tile:has(input:checked){border-color:#4F46E5;background:#4F46E50f;box-shadow:0 0 0 2px #4F46E533}
+.gp-reasons{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.gp-rlbl{font-size:11px;color:#6d6787;font-weight:600}
+.gp-rchip{cursor:pointer}
+.gp-rchip input{position:absolute;opacity:0;width:0;height:0}
+.gp-rchip span{display:inline-block;padding:4px 10px;border-radius:99px;font-size:11.5px;font-weight:700;background:#f0f0f6;color:#4b4666}
+.gp-rchip:has(input:checked) span{background:#4F46E5;color:#fff}
+.gp-nb{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#221c35;margin:2px 0}
+.gp-nb input{width:auto}
+.gp-i{width:16px;height:16px;border-radius:99px;border:none;background:#e7e6f0;color:#6d6787;font-size:10px;font-weight:800;cursor:pointer;font-style:italic}
+.gp-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:10.5px;font-weight:800;white-space:nowrap}
+.gp-lock{opacity:.62}
+.gp-lock .btn.grad{filter:grayscale(.7)}
+@media (prefers-color-scheme:dark){ .gp-tile{background:#20233a;border-color:rgba(255,255,255,.12)} .gp-tile b{color:#e8ecff} .gp-rchip span{background:#2a2d47;color:#c9d2ff} }
+:root[data-theme="dark"] .gp-tile{background:#20233a;border-color:rgba(255,255,255,.12)}
+:root[data-theme="dark"] .gp-tile b{color:#e8ecff}
 .pt-nudge{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;background:rgba(255,255,255,.95);border-radius:16px;padding:14px 18px;box-shadow:0 18px 44px rgba(0,0,0,.4);text-align:center;animation:ptNudge .25s ease-out}
 .pt-nudge b{font-size:13.5px}
 @keyframes ptNudge{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
@@ -2593,21 +2615,21 @@ const state={section:'campus',uniId:'tubs',selected:null,mode:'tag',myTable:null
    {id:'f3',activity:'musik',members:2,capacity:5,host:'Mara Schulz',slotId:'fs7',expires_at:Date.now()+5*3600*1000}],
   lmu:[],rwth:[],kit:[]},
  groupsByUni:{
-  tubs:[{id:'g1',name:'Spezi Team',subject:'Mathe 2',members:1,capacity:7,color:'#6366F1',slotId:'t1'},
-   {id:'g2',name:'Algorithms',subject:'Algorithmen',members:4,capacity:6,color:'#FB7185',slotId:'t2'},
-   {id:'g3',name:'Circuit Lab',subject:'Elektrotechnik',members:2,capacity:5,color:'#14B8A6',slotId:'t3'},
-   {id:'g4',name:'Statik',subject:'Technische Mechanik',members:3,capacity:6,color:'#F59E0B',slotId:'t4'},
-   {id:'g5',name:'Prog 1',subject:'Programmieren 1',members:5,capacity:8,color:'#38BDF8',slotId:'t5'},
-   {id:'g6',name:'Thermo',subject:'Thermodynamik',members:2,capacity:5,color:'#8B5CF6',slotId:'t6'}],
+  tubs:[{id:'g1',name:'Spezi Team',subject:'Mathe 2',members:1,capacity:7,color:'#6366F1',slotId:'t1',gender_policy:'mixed',nonbinary_welcome:true},
+   {id:'g2',name:'Algorithms',subject:'Algorithmen',members:4,capacity:6,color:'#FB7185',slotId:'t2',gender_policy:'mixed',nonbinary_welcome:true},
+   {id:'g3',name:'Circuit Lab',subject:'Elektrotechnik',members:2,capacity:5,color:'#14B8A6',slotId:'t3',gender_policy:'women_only',reason_tag:'Komfort'},
+   {id:'g4',name:'Statik',subject:'Technische Mechanik',members:3,capacity:6,color:'#F59E0B',slotId:'t4',gender_policy:'mixed',nonbinary_welcome:true},
+   {id:'g5',name:'Prog 1',subject:'Programmieren 1',members:5,capacity:8,color:'#38BDF8',slotId:'t5',gender_policy:'men_only',reason_tag:'Fokus'},
+   {id:'g6',name:'Thermo',subject:'Thermodynamik',members:2,capacity:5,color:'#8B5CF6',slotId:'t6',gender_policy:'mixed',nonbinary_welcome:true}],
   lmu:[{id:'g7',name:'Jura AG',subject:'Staatsrecht',members:3,capacity:6,color:'#8B5CF6',slotId:'t1'},{id:'g8',name:'BWL Crew',subject:'Marketing',members:2,capacity:5,color:'#FB7185',slotId:'t3'}],
   rwth:[{id:'g9',name:'MechaTeam',subject:'Maschinenelemente',members:4,capacity:6,color:'#0EA5E9',slotId:'t2'},{id:'g10',name:'InfoLab',subject:'Datenstrukturen',members:3,capacity:7,color:'#14B8A6',slotId:'t5'}],
   kit:[{id:'g11',name:'Energie',subject:'Energietechnik',members:2,capacity:6,color:'#14B8A6',slotId:'t1'},{id:'g12',name:'MatheZirkel',subject:'Analysis',members:5,capacity:8,color:'#F59E0B',slotId:'t6'}]},
- partners:[{id:'p1',name:'Lena Vogt',subject:'Mathe 2',sem:4,match:96,tags:['Analysis','Abends']},
-  {id:'p2',name:'Jonas Reincke',subject:'Algorithmen',sem:3,match:91,tags:['Python','Remote']},
-  {id:'p3',name:'Aylin Kaya',subject:'Elektrotechnik',sem:2,match:88,tags:['Labor']},
-  {id:'p4',name:'Tom Bäcker',subject:'Technische Mechanik',sem:4,match:84,tags:['Statik','Bibliothek']},
-  {id:'p5',name:'Mara Schulz',subject:'Programmieren 1',sem:1,match:82,tags:['Java']},
-  {id:'p6',name:'Ravi Menon',subject:'Thermodynamik',sem:3,match:79,tags:['Formeln','Morgens']}],
+ partners:[{id:'p1',name:'Lena Vogt',subject:'Mathe 2',sem:4,match:96,tags:['Analysis','Abends'],gender:'female'},
+  {id:'p2',name:'Jonas Reincke',subject:'Algorithmen',sem:3,match:91,tags:['Python','Remote'],gender:'male'},
+  {id:'p3',name:'Aylin Kaya',subject:'Elektrotechnik',sem:2,match:88,tags:['Labor'],gender:'female'},
+  {id:'p4',name:'Tom Bäcker',subject:'Technische Mechanik',sem:4,match:84,tags:['Statik','Bibliothek'],gender:'male'},
+  {id:'p5',name:'Mara Schulz',subject:'Programmieren 1',sem:1,match:82,tags:['Java'],gender:'nonbinary'},
+  {id:'p6',name:'Ravi Menon',subject:'Thermodynamik',sem:3,match:79,tags:['Formeln','Morgens'],gender:'male'}],
  matches:[{id:'m1',name:'Lena Vogt',subject:'Mathe 2',msg:'Sehen wir uns Donnerstag in der Bibliothek?',time:'14:02'},
   {id:'m2',name:'Jonas Reincke',subject:'Algorithmen',msg:'Übungsblatt 5 hochgeladen — schau mal rein.',time:'11:47'},
   {id:'m3',name:'Aylin Kaya',subject:'Elektrotechnik',msg:'Sagt Hallo',time:'Gestern'}],
@@ -2882,7 +2904,37 @@ const UNIVERSITIES=[
  {id:'ethz',country:'ch',name:'ETH Zürich',city:'Zürich',domains:['ethz.ch','student.ethz.ch'],status:'verified'},
  {id:'tudelft',country:'nl',name:'TU Delft',city:'Delft',domains:['tudelft.nl','student.tudelft.nl'],status:'verified'}]
 const MODULE_STATI=['ich starte gerade','Anfang','Mitte','fast fertig','wiederhole nur','brauche dringend Hilfe']
-const REPORT_REASONS=['Belästigung','Druck/Zwang','Beleidigung','unsicheres Verhalten','Spam','Fake-Profil','Dating/Flirt trotz Verbot','Betrugsversuch','externe Zahlungsforderung','verdächtiger Link','Datenschutzproblem','Admin-Missbrauch','Zahlungsthema','Sonstiges']
+const REPORT_REASONS=['Belästigung','Druck/Zwang','Beleidigung','unsicheres Verhalten','Spam','Fake-Profil','Dating/Flirt trotz Verbot','Falsche Geschlechtsangabe im geschützten Raum','Betrugsversuch','externe Zahlungsforderung','verdächtiger Link','Datenschutzproblem','Admin-Missbrauch','Zahlungsthema','Sonstiges']
+/* ===== Geschlechts-Räume (Matches & Lerngruppen): freiwillige Komfort-/Schutzräume, Selbstauskunft (AGG).
+   Server-Wahrheit siehe kommilo-backend/05-gender-policy.sql; hier client-seitige Spiegelung + Eignung. ===== */
+const GENDERS=[['female','Frau'],['male','Mann'],['nonbinary','Nicht-binär/divers'],['prefer_not','Keine Angabe']] // nie „Andere“
+const GENDER_LABEL=g=>((GENDERS.find(x=>x[0]===g)||[])[1]||'—')
+const ROOM_POLICIES={ mixed:{label:'Gemischt',ic:'⚥',color:'#6366F1'}, women_only:{label:'Nur Frauen',ic:'♀',color:'#DB2777'}, men_only:{label:'Nur Männer',ic:'♂',color:'#0EA5E9'} }
+const REASON_TAGS=['Komfort','Kulturell/Religiös','Fokus','Sicherheit']
+const SELF_DECL_HINT='Angaben beruhen auf Selbstauskunft.'
+const POLICY_LEGAL='Geschlechtsspezifische Lernräume sind freiwillige Komfort-/Schutzräume (zulässig als positive Maßnahme, AGG). Niemand wird aus der App ausgeschlossen — es gibt immer gemischte Räume.'
+function canJoinRoom(policy,gender){ const g=gender||DB.user.profile.gender||'' // mixed: alle (inkl. nonbinary & keine Angabe)
+  if(policy==='women_only') return g==='female'
+  if(policy==='men_only') return g==='male'
+  return true }
+function policyBadge(policy,reason){ const v=ROOM_POLICIES[policy||'mixed']||ROOM_POLICIES.mixed // farbenblind-sicher: Icon + Text
+  return '<span class="gp-badge" style="color:'+v.color+';background:'+v.color+'1a" title="'+esc(SELF_DECL_HINT)+'">'+v.ic+' '+esc(v.label)+(reason?' · '+esc(reason):'')+'</span>' }
+function policySelectorHTML(){ return '<label style="display:flex;align-items:center;gap:6px">Raumtyp <button type="button" class="gp-i" onclick="actions.policyInfo()" title="Info">i</button></label>'+
+  '<div class="gp-tiles">'+Object.entries(ROOM_POLICIES).map(([k,v])=>'<label class="gp-tile"><input type="radio" name="gp" value="'+k+'"'+(k==='mixed'?' checked':'')+'><span class="gp-ic" style="color:'+v.color+'">'+v.ic+'</span><b>'+esc(v.label)+'</b></label>').join('')+'</div>'+
+  '<div class="gp-reasons"><span class="gp-rlbl">Grund (optional):</span>'+['',...REASON_TAGS].map((r,i)=>'<label class="gp-rchip"><input type="radio" name="gpr" value="'+esc(r)+'"'+(i===0?' checked':'')+'><span>'+(r||'—')+'</span></label>').join('')+'</div>'+
+  '<label class="gp-nb"><input type="checkbox" id="gp-nb" checked> Nicht-binär willkommen (bei „Gemischt“)</label>'+
+  '<p class="hint">'+SELF_DECL_HINT+'</p>' }
+function readPolicy(){ const p=(document.querySelector('input[name="gp"]:checked')||{}).value||'mixed'
+  const reason=(document.querySelector('input[name="gpr"]:checked')||{}).value||''
+  return { gender_policy:p, reason_tag:reason||null, nonbinary_welcome: p==='mixed'?!!((document.getElementById('gp-nb')||{}).checked):false } }
+/* Gate: Binärraum anlegen/beitreten setzt eine Profil-Geschlechtsangabe voraus (Selbstauskunft auf Record). */
+function genderGate(policy,onOk){ if(policy==='mixed'||DB.user.profile.gender){ onOk(); return }
+  state._genderGateOk=onOk
+  openModal('<div class="eyebrow">Geschützter Raum</div><h3>Geschlecht im Profil setzen</h3>'+
+   '<p class="sub">Für „Nur Frauen“ / „Nur Männer“ brauchst du eine Angabe in deinem Profil (Selbstauskunft) — oder wähle einfach einen gemischten Raum.</p>'+
+   '<label>Geschlecht</label><select id="gg-sel">'+GENDERS.map(([v,l])=>'<option value="'+v+'">'+l+'</option>').join('')+'</select>'+
+   '<div class="mrow"><button class="btn ghost" onclick="closeModal()">Abbrechen</button><button class="btn grad" onclick="actions.genderGateSave()">Speichern & weiter</button></div>'+
+   '<p class="hint">'+SELF_DECL_HINT+'</p>') }
 const INTRO_VIDEO_VERSION=1
 const now=()=>Date.now()
 const uid=()=>'x'+Math.random().toString(36).slice(2,10)
@@ -2891,7 +2943,7 @@ const DEFAULT_DB={
    consents:{ privacy:false, terms:false, purpose:false, at:null },
    introSeen:false, introSeenAt:null, introVersion:null,
    modeChosen:null, intlWarningAccepted:false,
-   profile:{ complete:false, name:'', age:'', gender:'', city:'', countryId:'', universityId:'', program:'', degree:'', semester:'', language:'', learnMode:'', availability:'', goal:'' },
+   profile:{ complete:false, name:'', age:'', gender:'', pronouns:'', city:'', countryId:'', universityId:'', program:'', degree:'', semester:'', language:'', learnMode:'', availability:'', goal:'' },
    modules:[], firstMatchUsed:false, firstGroupJoinUsed:false, credits:0, creditLog:[], blockedUsers:[] },
  pendingUnis:[], invitationsOut:[], matches:[], chats:{},
  myGroups:[], joinRequests:[], adminTransfers:[],
@@ -2910,7 +2962,8 @@ function loadDB(){ try{ const raw=localStorage.getItem('wlt_db_v1'); DB=raw?JSON
   if(!DB.fireRequests) DB.fireRequests=[]
   if(DB.user&&DB.user.firstFireJoinUsed===undefined) DB.user.firstFireJoinUsed=false
   if(!DB.deviceId){ DB.deviceId='d-'+((crypto&&crypto.randomUUID)?crypto.randomUUID():(uid()+String(now()))) }
-  if(!DB.claimedSessions) DB.claimedSessions=[] }
+  if(!DB.claimedSessions) DB.claimedSessions=[]
+  if(DB.user&&DB.user.profile&&DB.user.profile.pronouns===undefined) DB.user.profile.pronouns='' } // Gender-Policy: additive Migration älterer Profile
 function saveDB(){ try{ localStorage.setItem('wlt_db_v1',JSON.stringify(DB)) }catch(e){} }
 loadDB()
 function audit(entry){ DB.auditLogs.push(Object.assign({id:uid(),created_at:now(),event_source:'system'},entry)); if(DB.auditLogs.length>500)DB.auditLogs.shift(); saveDB() }
@@ -3661,8 +3714,18 @@ const actions={
  obProfile(){ const g=id=>document.getElementById(id).value.trim()
    const req=['p-name','p-age','p-prog','p-sem','p-lang','p-avail','p-goal']
    if(req.some(id=>!document.getElementById(id).value.trim())){ document.getElementById('ob-err').textContent='Bitte alle Pflichtfelder ausfüllen (Geschlecht ist optional).'; return }
-   Object.assign(DB.user.profile,{complete:true,name:g('p-name'),age:g('p-age'),gender:g('p-gender'),program:g('p-prog'),degree:document.getElementById('p-degree').value,semester:g('p-sem'),language:g('p-lang'),learnMode:document.getElementById('p-mode').value,availability:g('p-avail'),goal:g('p-goal')})
+   Object.assign(DB.user.profile,{complete:true,name:g('p-name'),age:g('p-age'),gender:g('p-gender'),pronouns:g('p-pron').slice(0,20),program:g('p-prog'),degree:document.getElementById('p-degree').value,semester:g('p-sem'),language:g('p-lang'),learnMode:document.getElementById('p-mode').value,availability:g('p-avail'),goal:g('p-goal')})
    saveDB(); render() },
+ policyInfo(){ toast('Geschützte Lernräume',POLICY_LEGAL,'info') },
+ genderGateSave(){ DB.user.profile.gender=document.getElementById('gg-sel').value; saveDB(); closeModal()
+   const cb=state._genderGateOk; state._genderGateOk=null; if(cb) cb() },
+ genderModal(){ const p=DB.user.profile
+   openModal('<div class="eyebrow">Profil</div><h3>Geschlecht & Pronomen</h3>'+
+    '<label>Geschlecht (Selbstauskunft)</label><select id="gm-g"><option value="">— keine Auswahl —</option>'+GENDERS.map(([v,l])=>'<option value="'+v+'"'+(p.gender===v?' selected':'')+'>'+l+'</option>').join('')+'</select>'+
+    '<label>Pronomen (optional, ≤ 20)</label><input id="gm-p" maxlength="20" value="'+esc(p.pronouns||'')+'" placeholder="z. B. sie/ihr">'+
+    '<div class="mrow"><button class="btn ghost" onclick="closeModal()">Abbrechen</button><button class="btn grad" onclick="actions.genderSave()">Speichern</button></div>'+
+    '<p class="hint">'+SELF_DECL_HINT+' Für andere sichtbar nur bei aktivem „Profil sichtbar“.</p>') },
+ genderSave(){ DB.user.profile.gender=document.getElementById('gm-g').value; DB.user.profile.pronouns=document.getElementById('gm-p').value.trim().slice(0,20); saveDB(); closeModal(); render(); toast('Gespeichert ✓','') },
  obAddModule(){ DB.user.modules.push({name:'',total:'',lecture:'',exercise:'',tutorial:'',self:'',exam:'',attempt:'1. Versuch',status:MODULE_STATI[0]}); saveDB(); render() },
  obModField(i,k,v){ DB.user.modules[i][k]=(k==='name'||k==='attempt'||k==='status')?v:Math.max(0,Math.min(100,+v||0)); saveDB() },
  obModulesDone(){ if(!DB.user.modules.length||DB.user.modules.some(m=>!moduleComplete(m))){ document.getElementById('ob-err').textContent='Ohne vollständigen Modulfortschritt kein Zugriff auf Matching, Gruppen, Chat oder Club Unterlagen.'; return }
@@ -4077,7 +4140,8 @@ function gateHTML(g){ const u=DB.user
   '<h2>Dein Lernprofil</h2>'+
   '<label>Vollständiger Name*</label><input id="p-name" value="'+esc(p.name)+'">'+
   '<div class="row"><span style="flex:1"><label>Alter*</label><input id="p-age" type="number" value="'+esc(p.age)+'"></span>'+
-  '<span style="flex:1"><label>Geschlecht (optional)</label><input id="p-gender" value="'+esc(p.gender)+'"></span></div>'+
+  '<span style="flex:1"><label>Geschlecht (optional, Selbstauskunft)</label><select id="p-gender"><option value="">— keine Auswahl —</option>'+GENDERS.map(([v,l])=>'<option value="'+v+'"'+(p.gender===v?' selected':'')+'>'+l+'</option>').join('')+'</select></span></div>'+
+  '<label>Pronomen (optional, ≤ 20)</label><input id="p-pron" maxlength="20" value="'+esc(p.pronouns||'')+'" placeholder="z. B. sie/ihr">'+
   '<label>Universität</label><input value="'+esc((UNIVERSITIES.find(x=>x.id===p.universityId)||{}).name||'')+'" disabled>'+
   '<label>Studiengang*</label><input id="p-prog" value="'+esc(p.program)+'">'+
   '<div class="row"><span style="flex:1"><label>Abschluss*</label><select id="p-degree"><option>Bachelor</option><option>Master</option><option>Staatsexamen</option><option>PhD</option><option>Sonstiges</option></select></span>'+
@@ -4255,6 +4319,7 @@ const HUD={
  profil(){ const p=DB.user.profile
   return '<div class="card br" style="width:380px"><div class="eyebrow">Profil</div><h2>'+esc(p.name||'Du')+' <span class="tag grad-bg">'+esc((UNIVERSITIES.find(x=>x.id===p.universityId)||{}).name||'')+'</span></h2>'+
   '<p class="sub">'+esc(p.program)+' · '+esc(p.degree)+' · '+esc(p.semester)+'. Semester · '+esc(p.learnMode)+'</p>'+
+  '<div class="row sp" style="margin:2px 0 6px"><span class="sub">'+(p.gender?esc(GENDER_LABEL(p.gender)):'Geschlecht: keine Angabe')+(p.pronouns?' · '+esc(p.pronouns):'')+'</span><button class="btn ghost sm" onclick="actions.genderModal()">ändern</button></div>'+
   '<div class="stats stat-in"><div class="stat"><b style="color:#6366F1">'+DB.user.modules.length+'</b><span>Module</span></div><div class="stat"><b style="color:#8B5CF6">'+DB.matches.length+'</b><span>Matches</span></div><div class="stat"><b style="color:#14B8A6">'+DB.myGroups.filter(x=>x.status==='active').length+'</b><span>Gruppen</span></div></div>'+
   '<h4>Lernziel</h4><p>'+esc(p.goal)+'</p><h4>Verfügbarkeit</h4><p>'+esc(p.availability)+'</p>'+
   '<h4>Modulfortschritt</h4>'+DB.user.modules.map(m=>'<div class="sub">'+esc(m.name)+' · Gesamt '+m.total+' % · '+esc(m.status)+' · '+esc(m.attempt)+'</div>').join('')+'</div>'+
