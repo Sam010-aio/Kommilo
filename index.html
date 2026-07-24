@@ -3361,66 +3361,77 @@ const actions={
    toast('Du bist „'+g.name+'“ beigetreten',freeJ?'Erster Beitritt kostenlos.':'1 Credit eingelöst · Guthaben: '+credits()+' Credits')
    render() },
  feedUploadModal(){ if(!SB_USER){ toast('Bitte einloggen','Poste mit deiner Uni-Mail — Login im Profil.','info'); return }
-   if(!FLAGS.feed){ toast('Feed pausiert','Posten ist gerade deaktiviert (Wartung/Moderation).','info'); return }
-   const mods=(DB.user.modules||[]).map(m=>String((m&&m.name)||m)).filter(Boolean)
-   const secPlace=state.section==='aktivitaeten'?'Lagerfeuer':'Studierendenhaus' // aktueller 3D-Ort als vorgewählter Chip
-   openModal('<div class="eyebrow">Campus Puls</div><h3>Was läuft gerade?</h3>'+
-    '<label>Foto (JPG/PNG ≤ 10 MB) oder Video (MP4/WebM ≤ 60 s, ≤ 50 MB) — optional</label><input type="file" id="fd-file" accept="image/jpeg,image/png,video/mp4,video/webm" onchange="actions.feedPickPreview(this)">'+
-    '<div id="fd-prev"></div>'+
-    '<label>Caption (≤ 300 Zeichen)</label><textarea id="fd-cap" maxlength="300" rows="3" placeholder="Zeig deinen Campus …"></textarea>'+
-    '<label>Modul-Tag (optional)</label><input id="fd-mod" maxlength="60" list="fd-modl" placeholder="z. B. Mathe 2"><datalist id="fd-modl">'+mods.map(m=>'<option value="'+esc(m)+'">').join('')+'</datalist>'+
-    '<label>Aktivitäts-Tag (optional)</label><input id="fd-act" maxlength="60" list="fd-actl" placeholder="z. B. Bouldern"><datalist id="fd-actl">'+ACTIVITIES.map(a=>'<option value="'+esc(a.n)+'">').join('')+'</datalist>'+
-    '<label>Ort (zeigt deinen Beitrag als Bubble in der 3D-Welt)</label><select id="fd-place"><option value="">— kein Ort —</option>'+Object.keys(PULS_PLACES).map(p2=>'<option'+(p2===secPlace?' selected':'')+'>📍 '+p2+'</option>').join('')+'</select>'+
-    '<div class="mrow"><button class="btn ghost" onclick="closeModal()">Abbrechen</button>'+
-    '<button class="btn grad" id="fd-go" onclick="actions.feedUpload()">Posten</button></div>'+
-    '<p class="hint">Tipp: Videos vorher kürzen (≤ 60 s). Captions & Tags werden moderiert; ab 3 Meldungen wird ausgeblendet. Löschen entfernt auch die Dateien (DSGVO).</p>') },
- feedPickPreview(inp){ const pv=document.getElementById('fd-prev'); if(!pv) return
+   if(!FLAGS.puls&&!FLAGS.feed){ toast('Puls pausiert','Posten ist gerade deaktiviert (Wartung/Moderation).','info'); return }
+   const reel=(PULS.tab!=='posts') // FAB/CTA adaptiv zum aktiven Tab; keine Tag-/Modul-/Ort-Felder (Scope kommt aus dem Autorprofil)
+   state._fdKind=reel?'reel':'post'; state._fdMode='img'
+   if(reel){ openModal('<div class="eyebrow">Campus Puls</div><h3>Reel posten</h3>'+
+     '<label>Video (MP4/WebM ≤ 60 s, ≤ 50 MB)</label><input type="file" id="fd-file" accept="video/mp4,video/webm" onchange="actions.feedPickPreview()">'+
+     '<div id="fd-prev"></div>'+
+     '<label>Caption (optional, ≤ 150)</label><textarea id="fd-cap" maxlength="150" rows="2" oninput="actions.fdCount()" placeholder="Was läuft gerade?"></textarea><div class="fd-count" id="fd-cnt">0/150</div>'+
+     '<div class="mrow"><button class="btn ghost" onclick="closeModal()">Abbrechen</button><button class="btn grad" id="fd-go" disabled onclick="actions.feedUpload()">Posten</button></div>'+
+     '<p class="hint">Auto-Vorschaubild wird erzeugt; die Caption läuft durch die Moderation.</p>')
+   } else { openModal('<div class="eyebrow">Campus Puls</div><h3>Post erstellen</h3>'+
+     '<div class="fd-seg"><button type="button" id="fd-m-img" class="on" onclick="actions.fdMode(\'img\')">Bild + Text</button><button type="button" id="fd-m-txt" onclick="actions.fdMode(\'txt\')">Nur Text</button></div>'+
+     '<div id="fd-imgrow"><label>Bild (JPG/PNG ≤ 10 MB)</label><input type="file" id="fd-file" accept="image/jpeg,image/png" onchange="actions.feedPickPreview()"><div id="fd-prev"></div></div>'+
+     '<label>Text (≤ 300)</label><textarea id="fd-txt" maxlength="300" rows="4" oninput="actions.fdCount()" placeholder="Zeig deinen Campus …"></textarea><div class="fd-count" id="fd-cnt">0/300</div>'+
+     '<div class="mrow"><button class="btn ghost" onclick="closeModal()">Abbrechen</button><button class="btn grad" id="fd-go" disabled onclick="actions.feedUpload()">Posten</button></div>'+
+     '<p class="hint">Links (https) werden verlinkt; der Text läuft durch die Moderation.</p>') }
+   actions.fdCount() },
+ fdMode(m){ state._fdMode=m
+   const bi=document.getElementById('fd-m-img'), bt=document.getElementById('fd-m-txt'); if(bi)bi.classList.toggle('on',m==='img'); if(bt)bt.classList.toggle('on',m==='txt')
+   const ir=document.getElementById('fd-imgrow'); if(ir) ir.style.display=m==='img'?'':'none'; actions.fdCount() },
+ fdCount(){ const isReel=state._fdKind==='reel'
+   const ta=document.getElementById(isReel?'fd-cap':'fd-txt'), cnt=document.getElementById('fd-cnt')
+   const max=isReel?150:300, len=(ta&&ta.value||'').trim().length; if(cnt) cnt.textContent=(ta&&ta.value||'').length+'/'+max
+   const go=document.getElementById('fd-go'); if(!go) return
+   const hasFile=!!((document.getElementById('fd-file')||{}).files||[])[0]
+   go.disabled=!(isReel?hasFile:(state._fdMode==='img'?(hasFile&&len>0):len>0)) },
+ feedPickPreview(){ const pv=document.getElementById('fd-prev')
    if(state._fdPrevUrl){ URL.revokeObjectURL(state._fdPrevUrl); state._fdPrevUrl=null }
-   const f=(inp.files||[])[0]; if(!f){ pv.innerHTML=''; return }
-   if(f.type.indexOf('image/')===0){ state._fdPrevUrl=URL.createObjectURL(f)
-     pv.innerHTML='<img src="'+state._fdPrevUrl+'" alt="Vorschau">' }
-   else pv.innerHTML='<span class="fd-vchip">🎬 '+esc(f.name.slice(0,32))+' · '+(f.size/1048576).toFixed(1)+' MB</span>' },
- feedUpload(){ const f=(document.getElementById('fd-file').files||[])[0], cap=(document.getElementById('fd-cap').value||'').trim()
-   const mod=(document.getElementById('fd-mod').value||'').trim().slice(0,60), act=(document.getElementById('fd-act').value||'').trim().slice(0,60)
-   const place=(document.getElementById('fd-place').value||'').replace('📍 ','').trim()
-   if(!f&&!cap){ toast('Bitte Datei oder Text angeben','','info'); return }
-   const bad=modCheck(cap)||modCheck(mod)||modCheck(act)
-   if(bad){ const r=modStrike(bad,cap||mod||act); if(r.banned){ closeModal(); render() } return }
+   const f=((document.getElementById('fd-file')||{}).files||[])[0]
+   if(pv){ if(!f) pv.innerHTML=''
+     else if(f.type.indexOf('image/')===0){ state._fdPrevUrl=URL.createObjectURL(f); pv.innerHTML='<img src="'+state._fdPrevUrl+'" alt="Vorschau">' }
+     else pv.innerHTML='<span class="fd-vchip">🎬 '+esc(f.name.slice(0,32))+' · '+(f.size/1048576).toFixed(1)+' MB</span>' }
+   actions.fdCount() },
+ feedUpload(){ const isReel=state._fdKind==='reel', wantImg=!isReel&&state._fdMode==='img'
+   const f=((document.getElementById('fd-file')||{}).files||[])[0]
+   const cap=isReel?(document.getElementById('fd-cap').value||'').trim().slice(0,150):''
+   const txt=!isReel?(document.getElementById('fd-txt').value||'').trim().slice(0,300):''
+   const modText=isReel?cap:txt
+   if(modText){ const bad=modCheck(modText); if(bad){ const r=modStrike(bad,modText); if(r.banned){ closeModal(); render() } return } }
    const go=document.getElementById('fd-go'); const reset=()=>{ if(go){ go.disabled=false; go.textContent='Posten' } }
-   const finish=(type,path,thumb)=>{
-     const full={author:SB_USER.id,type,storage_path:path,thumb_path:thumb||null,caption:cap||null,module_tag:mod||null,activity_tag:act||null,place_tag:place||null}
-     const base={author:SB_USER.id,type,storage_path:path,caption:cap||null,activity_tag:act||null} // nur 01-feed.sql-Spalten
-     const ok=()=>{ closeModal(); PULS.optimistic=null; toast('Gepostet ✓','Dein Beitrag pulsiert jetzt auf dem Campus.'); feedLoad(true) }
-     const fail=msg=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Posten fehlgeschlagen',String(msg||'Bitte später erneut versuchen.').slice(0,140),'info') }
-     window.__sb.from('posts').insert(full).then(r=>{
-       if(!r.error){ ok(); return }
-       const msg=String(r.error.message||r.error.hint||'')
-       if(/column|schema cache|thumb_path|module_tag|place_tag/i.test(msg)){ // 04-puls.sql noch nicht ausgeführt → Basis-Insert, damit der Beitrag TROTZDEM landet
-         window.__sb.from('posts').insert(base).then(r2=>{ if(r2.error){ fail(r2.error.message); return }
-           closeModal(); PULS.optimistic=null; toast('Gepostet ✓','Ohne Tags/Vorschau — führe 04-puls.sql in Supabase aus, um alle Puls-Funktionen zu aktivieren.'); feedLoad(true) }).catch(()=>fail())
-         return }
-       fail(msg) }).catch(()=>fail()) }
-   if(!f){ if(go){ go.disabled=true; go.textContent='Postet …' } PULS.optimistic={cap}; pulsRender(); finish('text',null,null); return }
-   const okImg=['image/jpeg','image/png'], okVid=['video/mp4','video/webm'], isVid=okVid.includes(f.type)
-   if(!isVid&&!okImg.includes(f.type)){ toast('Dateityp nicht erlaubt','Nur JPG, PNG, MP4 oder WebM.','info'); return }
-   if(!isVid&&f.size>10*1024*1024){ toast('Bild zu groß','Max. 10 MB — bitte komprimieren.','info'); return }
-   if(isVid&&f.size>50*1024*1024){ toast('Video zu groß','Max. 50 MB / 60 s.','info'); return }
    if(go){ go.disabled=true; go.textContent='Lädt hoch …' }
-   PULS.optimistic={cap}; pulsRender()   // optimistische Karte sofort im Puls-Fenster
-   const doUpload=()=>{ const ext=(f.name.split('.').pop()||'bin').toLowerCase(), base=uid()
-     const path='feed/'+SB_USER.id+'/'+base+'.'+ext
-     window.__sb.storage.from('media').upload(path,f,{contentType:f.type}).then(r=>{
-       if(r.error){ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info'); return }
-       pulsThumb(f,isVid,tb=>{ if(!tb){ finish(isVid?'video':'image',path,null); return } // Thumb best-effort — Post geht auch ohne raus
-         const tpath='feed/'+SB_USER.id+'/'+base+'_t.jpg'
-         window.__sb.storage.from('media').upload(tpath,tb,{contentType:'image/jpeg'})
-           .then(rr=>finish(isVid?'video':'image',path,rr.error?null:tpath))
-           .catch(()=>finish(isVid?'video':'image',path,null)) }) }).catch(()=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info') }) }
-   if(isVid){ const v=document.createElement('video'); v.preload='metadata'
-     v.onloadedmetadata=()=>{ URL.revokeObjectURL(v.src)
-       if(isFinite(v.duration)&&v.duration>61){ toast('Video zu lang','Max. 60 Sekunden.','info'); PULS.optimistic=null; pulsRender(); reset(); return } doUpload() } // Infinity/NaN (z. B. MediaRecorder-WebM) nicht fälschlich blocken — Größe deckelt schon
-     v.onerror=()=>{ doUpload() }; v.src=URL.createObjectURL(f) }
-   else doUpload() },
+   PULS.optimistic={}; pulsRender()
+   const finish=(mt,path,thumb)=>{
+     const full={author:SB_USER.id,kind:isReel?'reel':'post',media_type:mt,storage_path:path||null,thumb_path:thumb||null,
+       caption:isReel?(cap||null):null,text:isReel?null:(txt||null),type:mt==='video'?'video':(mt==='image'?'image':'text')}
+     const base={author:SB_USER.id,type:full.type,storage_path:path||null,caption:isReel?(cap||null):(txt||null)} // nur 01-feed.sql-Spalten
+     const ok=n=>{ closeModal(); PULS.optimistic=null; toast('Gepostet ✓',n); feedLoad(true) }
+     const fail=msg=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Posten fehlgeschlagen',String(msg||'Bitte später erneut versuchen.').slice(0,140),'info') }
+     window.__sb.from('posts').insert(full).then(r=>{ if(!r.error){ ok(isReel?'Dein Reel pulsiert jetzt auf dem Campus.':'Dein Post ist im Feed.'); return }
+       const msg=String(r.error.message||r.error.hint||'')
+       if(/column|schema cache|kind|media_type|\btext\b/i.test(msg)){ // 06-puls-v3.sql noch nicht ausgeführt → Basis-Insert
+         window.__sb.from('posts').insert(base).then(r2=>{ if(r2.error){ fail(r2.error.message); return } ok('Führe 06-puls-v3.sql aus, um Reels/Posts + Scope voll zu aktivieren.') }).catch(()=>fail()); return }
+       fail(msg) }).catch(()=>fail()) }
+   if(isReel){ if(!f){ toast('Bitte ein Video wählen','','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     if(f.type!=='video/mp4'&&f.type!=='video/webm'){ toast('Nur MP4 oder WebM','','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     if(f.size>50*1024*1024){ toast('Video zu groß','Max. 50 MB / 60 s.','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     const up=()=>{ const ext=(f.name.split('.').pop()||'mp4').toLowerCase(), b=uid(), path='feed/'+SB_USER.id+'/'+b+'.'+ext
+       window.__sb.storage.from('media').upload(path,f,{contentType:f.type}).then(r=>{ if(r.error){ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info'); return }
+         pulsThumb(f,true,tb=>{ if(!tb){ finish('video',path,null); return } const tp='feed/'+SB_USER.id+'/'+b+'_t.jpg'
+           window.__sb.storage.from('media').upload(tp,tb,{contentType:'image/jpeg'}).then(rr=>finish('video',path,rr.error?null:tp)).catch(()=>finish('video',path,null)) }) }).catch(()=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info') }) }
+     const v=document.createElement('video'); v.preload='metadata'
+     v.onloadedmetadata=()=>{ URL.revokeObjectURL(v.src); if(isFinite(v.duration)&&v.duration>61){ toast('Video zu lang','Max. 60 Sekunden.','info'); PULS.optimistic=null; pulsRender(); reset(); return } up() } // Infinity/NaN nicht fälschlich blocken
+     v.onerror=()=>up(); v.src=URL.createObjectURL(f) }
+   else if(wantImg){ if(!f){ toast('Bitte ein Bild wählen','','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     if(f.type!=='image/jpeg'&&f.type!=='image/png'){ toast('Nur JPG/PNG','','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     if(f.size>10*1024*1024){ toast('Bild zu groß','Max. 10 MB.','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     const ext=f.type==='image/png'?'png':'jpg', b=uid(), path='feed/'+SB_USER.id+'/'+b+'.'+ext
+     window.__sb.storage.from('media').upload(path,f,{contentType:f.type}).then(r=>{ if(r.error){ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info'); return }
+       pulsThumb(f,false,tb=>{ if(!tb){ finish('image',path,null); return } const tp='feed/'+SB_USER.id+'/'+b+'_t.jpg'
+         window.__sb.storage.from('media').upload(tp,tb,{contentType:'image/jpeg'}).then(rr=>finish('image',path,rr.error?null:tp)).catch(()=>finish('image',path,null)) }) }).catch(()=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info') }) }
+   else finish('none',null,null) },
+
  pulsComments(pid){ if(!window.__sb||!SB_USER){ toast('Bitte einloggen','','info'); return }
    window.__sb.from('post_comments').select('*').eq('post_id',pid).order('created_at',{ascending:true}).limit(100).then(r=>{
      const list=r.data||[]; PULS.counts[pid]=list.length
