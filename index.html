@@ -14,11 +14,11 @@
 /* ===== Delivery / Build-Sichtbarkeit (LIGHTNESS RESCUE Ph0) =====
    EINE Quelle der Build-Kennung — geteilt mit sw.js (Cache-Name = kommilo-v${id}). Sichtbar als
    dezenter Fuß-Stempel und im ?debug=perf-Overlay; so ist am Bildschirm ablesbar, welcher Build läuft. */
-window.__BUILD = { id: '2026.07.23-1243154', date: '2026-07-23', hash: '1243154' }; // id = Delivery-Stempel (Datum-Inhalts-Commit) — GLEICHE Zeichenkette wie BUILD in sw.js ⇒ Cache-Name = kommilo-v<id>
+window.__BUILD = { id: '2026.07.23-c3394c4', date: '2026-07-23', hash: 'c3394c4' }; // id = Delivery-Stempel (Datum-Inhalts-Commit) — GLEICHE Zeichenkette wie BUILD in sw.js ⇒ Cache-Name = kommilo-v<id>
 (function(){
   // Fuß-Stempel setzen, sobald der Body existiert (robust — auch wenn die 3D-App nicht bootet)
   function stamp(){ var el=document.getElementById('buildstamp'); if(!el) return
-    el.textContent='v'+window.__BUILD.id }   // → v2026.07.23-1243154 (Format laut Spezifikation)
+    el.textContent='v'+window.__BUILD.id }   // → v2026.07.23-c3394c4 (Format laut Spezifikation)
   if(document.readyState!=='loading') stamp(); else addEventListener('DOMContentLoaded', stamp)
   if(!('serviceWorker' in navigator)) return
   // Selbst-enthaltener Reload-Hinweis — unabhängig vom App-Toast, wirkt auch bei kaputter/veralteter App
@@ -188,74 +188,103 @@ input:focus,select:focus{border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,22
 @keyframes splFade{to{opacity:0}}
 @keyframes splUp{to{transform:translateY(-12px)}}
 @keyframes splPulse{from{transform:translateY(-12px)}to{transform:translateY(-17px)}}
-/* ===== CAMPUS PULS — Mini-Fenster, Theater, Nudge (Owner-Brief; Indigo/Teal-Glas, rounded-16) ===== */
-#pulsWin{position:fixed;right:16px;bottom:76px;width:220px;height:360px;z-index:30;border-radius:16px;overflow:hidden;
- background:rgba(255,255,255,.62);backdrop-filter:blur(18px);border:1px solid rgba(79,70,229,.18);
- box-shadow:0 18px 44px rgba(34,28,53,.28);display:flex;flex-direction:column;animation:pwFloat 3.4s ease-in-out infinite alternate;cursor:pointer}
-#pulsWin.night{background:rgba(16,18,36,.58);border-color:rgba(45,212,191,.28);color:#e8ecff}
-@keyframes pwFloat{from{transform:translateY(0)}to{transform:translateY(-2px)}}
-.pw-top{display:flex;align-items:center;gap:6px;padding:8px 10px 6px}
-.pw-brand{font-size:11px;font-weight:800;letter-spacing:.4px;color:#4F46E5}
-#pulsWin.night .pw-brand{color:#2DD4BF}
-.pw-ringw{width:16px;height:16px;margin-left:auto;flex:none}
-.pw-ring{fill:none;stroke:#2DD4BF;stroke-width:2.6;stroke-linecap:round;stroke-dasharray:50.3;stroke-dashoffset:50.3;transform:rotate(-90deg);transform-origin:center}
-#pulsWin.paused .pw-ring{animation-play-state:paused!important}
-@keyframes pwring{from{stroke-dashoffset:50.3}to{stroke-dashoffset:0}}
-.pw-min{border:none;background:none;font-size:16px;font-weight:800;color:#999;cursor:pointer;line-height:1;padding:0 2px}
-.pw-media{flex:1;position:relative;overflow:hidden;background:#171930;transition:transform .25s ease}
-.pw-media img,.pw-media video{width:100%;height:100%;object-fit:cover;display:block}
-.pw-seed{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:14px;text-align:center;color:#fff}
-.pw-seed p{font-size:12px;font-weight:600;line-height:1.45}
-.pw-ic{font-size:34px}
-.pw-optim{position:absolute;top:8px;left:8px;z-index:2;background:rgba(79,70,229,.92);color:#fff;font-size:10.5px;font-weight:700;padding:4px 8px;border-radius:99px}
-.pw-meta{display:flex;align-items:center;gap:6px;padding:8px 10px;font-size:10.5px;min-height:31px}
-.pw-author{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pw-tag{color:#4F46E5;background:rgba(79,70,229,.1);border-radius:99px;padding:2px 7px;font-weight:700;white-space:nowrap;margin-left:auto}
-#pulsWin.night .pw-tag{color:#2DD4BF;background:rgba(45,212,191,.14)}
-.pw-acts{position:absolute;right:8px;top:40px;display:flex;flex-direction:column;gap:6px;opacity:0;transition:opacity .2s;z-index:3}
-#pulsWin:hover .pw-acts{opacity:1}
-.pw-acts button{width:30px;height:30px;border-radius:99px;border:none;background:rgba(255,255,255,.88);font-size:14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18)}
-.pw-plus{position:absolute;left:8px;bottom:40px;width:32px;height:32px;border-radius:99px;border:none;cursor:pointer;z-index:3;
- background:linear-gradient(135deg,#4F46E5,#2DD4BF);color:#fff;font-size:17px;font-weight:800;box-shadow:0 4px 12px rgba(79,70,229,.4)}
-#pulsDot{position:fixed;right:20px;bottom:80px;width:18px;height:18px;border-radius:99px;z-index:30;border:none;cursor:pointer;
- background:radial-gradient(circle at 35% 35%,#7c76f0,#4F46E5);animation:pwPulse 1.8s ease-in-out infinite}
-@keyframes pwPulse{0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,.45)}55%{box-shadow:0 0 0 9px rgba(79,70,229,0)}}
-@media (max-width:700px){ #pulsWin{width:172px;height:284px;bottom:86px;right:12px} #pulsDot{bottom:90px} }
-#pulsTheater{position:fixed;inset:0;z-index:55;opacity:0;transition:opacity .22s ease}
-#pulsTheater.in{opacity:1}
-#pulsTheater.out{opacity:0;transform:translate(32vw,32vh) scale(.14);transform-origin:100% 100%;transition:all .22s ease-in}
-.pt-bg{position:absolute;inset:0;backdrop-filter:blur(14px) brightness(.52);background:radial-gradient(120% 100% at 50% 0%,rgba(49,46,129,.28),rgba(8,9,18,.4))}
-.pt-x{position:absolute;top:calc(14px + env(safe-area-inset-top));right:16px;z-index:4;width:40px;height:40px;border-radius:99px;border:none;background:rgba(255,255,255,.14);color:#fff;font-size:18px;cursor:pointer}
-.pt-chips{position:absolute;top:calc(14px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:82vw}
-.pt-chip{border:none;border-radius:99px;padding:6px 12px;font-size:11.5px;font-weight:700;background:rgba(255,255,255,.14);color:#eee;cursor:pointer;transition:background .2s}
-.pt-chip.on{background:linear-gradient(135deg,#4F46E5,#2DD4BF);color:#fff}
-.pt-scroll{position:absolute;inset:0;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;z-index:2}
-.pt-scroll::-webkit-scrollbar{display:none}
-.pt-item{height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:grid;place-items:center;padding:64px 0 20px}
-.pt-frame{position:relative;width:min(400px,92vw);height:min(76vh,700px);border-radius:16px;overflow:hidden;background:#0e1022;
- box-shadow:0 0 0 1px rgba(79,70,229,.5),0 0 42px rgba(79,70,229,.32),0 24px 60px rgba(0,0,0,.5)}
-.pt-frame img,.pt-frame video{width:100%;height:100%;object-fit:contain;background:#0b0c18;cursor:pointer}
-.pt-frame .pw-seed{position:absolute;inset:0}
-.pt-frame .pw-seed p{font-size:14px}
-.pt-rail{position:absolute;right:10px;bottom:92px;display:flex;flex-direction:column;gap:10px;z-index:3}
-.pt-rail button{width:42px;height:42px;border-radius:99px;border:none;background:rgba(255,255,255,.14);backdrop-filter:blur(6px);color:#fff;font-size:16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;transition:background .2s}
-.pt-rail button i{font-style:normal;font-size:9.5px;font-weight:700;margin-top:1px}
-.pt-rail button.on{background:linear-gradient(135deg,#EF4444,#F59E0B)}
-.pt-cap{position:absolute;left:12px;right:64px;bottom:12px;z-index:3;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.65)}
-.pt-author{border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:99px;padding:4px 10px;font-size:11.5px;font-weight:800;cursor:pointer}
-.pt-cap p{font-size:13px;font-weight:600;margin:6px 0 4px;line-height:1.4}
-.pt-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.pt-tags button{border:none;border-radius:99px;padding:3px 9px;font-size:10.5px;font-weight:700;background:rgba(45,212,191,.22);color:#a7f3e9;cursor:pointer}
-.pt-tags .pt-place{font-size:10.5px;font-weight:700;color:#c9d2ff}
-.pt-burst{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:74px;color:#fff;text-shadow:0 0 24px rgba(239,68,68,.8);animation:ptBurst .7s ease-out forwards;pointer-events:none;z-index:5}
+/* ===== CAMPUS PULS v3 — Puls-Sticker (Squircle) + Zwei-Tab-Panel (Reels/Posts) + Scope ===== */
+#pulsStick{position:fixed;right:20px;bottom:88px;width:158px;height:280px;z-index:40;cursor:pointer;padding:0;border:none;background:none;
+ border-radius:42% / 34%;transform:rotate(-4deg) scale(.985);filter:drop-shadow(0 18px 50px rgba(23,23,43,.45));
+ animation:psBob 4.5s ease-in-out infinite, psSway 7s ease-in-out infinite;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+#pulsStick::before{content:"";position:absolute;inset:-3px;border-radius:inherit;z-index:0;padding:3px;
+ background:conic-gradient(from 0deg,#4F46E5,#2DD4BF,transparent 62%,#4F46E5);opacity:.55;animation:psRim 20s linear infinite;
+ -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+#pulsStick.paused::before{animation-play-state:paused}
+@keyframes psRim{to{transform:rotate(360deg)}}
+@keyframes psBob{0%,100%{translate:0 0}50%{translate:0 -4px}}
+@keyframes psSway{0%,100%{rotate:-4deg}50%{rotate:-1.5deg}}
+#pulsStick .ps-clip{position:absolute;inset:0;border-radius:inherit;overflow:hidden;background:#171930;
+ border:2px solid rgba(255,255,255,.55);box-shadow:inset 5px 5px 16px -8px rgba(255,255,255,.55)}
+#pulsStick .ps-media{position:absolute;inset:0;transition:transform .12s ease}
+#pulsStick .ps-media img,#pulsStick .ps-media video{width:100%;height:100%;object-fit:cover;display:block}
+#pulsStick .ps-seed{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;color:#fff}
+#pulsStick .ps-seed .pw-ic{font-size:34px}#pulsStick .ps-seed p{font-size:12px;font-weight:700;line-height:1.4}
+#pulsStick .ps-prog{position:absolute;top:9px;left:12px;right:12px;height:2px;border-radius:2px;background:rgba(255,255,255,.28);overflow:hidden;z-index:3}
+#pulsStick .ps-prog i{display:block;height:100%;width:0;background:#2DD4BF;border-radius:2px}
+#pulsStick .ps-pill{position:absolute;top:15px;left:11px;z-index:3;display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.34);color:#fff;border-radius:99px;padding:2px 7px;font-size:10px;font-weight:800}
+#pulsStick .ps-pill b{width:6px;height:6px;border-radius:99px;background:#2DD4BF;animation:psDot 1.4s ease-in-out infinite}
+@keyframes psDot{0%,100%{transform:scale(.8)}50%{transform:scale(1.15)}}
+#pulsStick .ps-av{position:absolute;bottom:13px;left:11px;z-index:3;width:20px;height:20px;border-radius:99px;font-size:10px;font-weight:800;color:#fff;display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+#pulsStick .ps-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;background:rgba(0,0,0,.5);color:#fff;border-radius:99px;padding:6px 12px;font-size:11px;font-weight:700;animation:psHint 3s ease forwards;pointer-events:none}
+@keyframes psHint{0%,66%{opacity:1}100%{opacity:0}}
+#pulsStick .ps-min{position:absolute;top:8px;right:11px;z-index:4;width:22px;height:22px;border-radius:99px;background:rgba(0,0,0,.4);color:#fff;font-size:14px;font-weight:800;cursor:pointer;opacity:0;transition:opacity .2s;display:grid;place-items:center;line-height:1}
+#pulsStick:hover .ps-min{opacity:1}
+#pulsStick:hover{transform:rotate(0deg) translateY(-6px) scale(1.02);animation-play-state:paused}
+#pulsStick:hover::before{opacity:.85}
+#pulsStick:focus-visible{outline:3px solid #4F46E5;outline-offset:3px}
+@media (min-width:1600px){#pulsStick{width:172px;height:306px}}
+@media (max-width:900px) and (min-width:701px){#pulsStick{width:140px;height:248px}}
+@media (max-width:700px){#pulsStick{width:96px;height:170px;right:12px}}
+#pulsBubble{position:fixed;right:24px;bottom:88px;width:44px;height:44px;border-radius:99px;z-index:40;border:none;cursor:pointer;
+ background:radial-gradient(circle at 35% 32%,#6d5ae6,#4F46E5);color:#fff;font-size:20px;display:grid;place-items:center;animation:psHalo 1.8s ease-in-out infinite}
+#pulsBubble:focus-visible{outline:3px solid #2DD4BF;outline-offset:2px}
+@keyframes psHalo{0%,100%{box-shadow:0 0 0 0 rgba(45,212,191,.5)}55%{box-shadow:0 0 0 10px rgba(45,212,191,0)}}
+@media (prefers-reduced-motion:reduce){
+ #pulsStick{animation:none;transform:rotate(-4deg)}#pulsStick:hover{transform:rotate(0) translateY(-6px) scale(1.02)}
+ #pulsStick::before,#pulsStick .ps-pill b,#pulsBubble{animation:none}
+ #pulsStick .ps-prog i{width:100%}
+}
+/* Panel */
+#pulsPanel{position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .28s ease}
+#pulsPanel.in{opacity:1}
+#pulsPanel .pp-bg{position:absolute;inset:0;backdrop-filter:blur(14px);background:rgba(0,0,0,.35)}
+#pulsPanel .pp-card{position:relative;z-index:2;width:min(460px,94vw);height:min(88vh,760px);border-radius:24px;overflow:hidden;
+ background:rgba(255,255,255,.85);backdrop-filter:blur(20px);box-shadow:0 30px 80px rgba(0,0,0,.4);display:flex;flex-direction:column;
+ transform:scale(.96);transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+#pulsPanel.in .pp-card{transform:scale(1)}
+#pulsPanel.night .pp-card{background:rgba(16,18,36,.88);color:#e8ecff}
+.pp-x{position:absolute;top:12px;right:12px;z-index:6;width:38px;height:38px;border-radius:99px;border:none;background:rgba(0,0,0,.12);color:inherit;font-size:17px;cursor:pointer}
+.pp-tabs{display:flex;gap:6px;padding:14px 14px 8px}
+.pp-tab{flex:1;border:none;border-radius:99px;padding:9px;font-size:13px;font-weight:800;cursor:pointer;background:rgba(79,70,229,.08);color:#4F46E5}
+.pp-tab.on{background:#4F46E5;color:#fff}
+.pp-scopebar{padding:0 14px 8px}
+.pp-scope-pill{border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:700;background:rgba(45,212,191,.16);color:#0f766e;cursor:pointer}
+#pulsPanel.night .pp-scope-pill{background:rgba(45,212,191,.2);color:#8beadf}
+.pp-scope-opts{display:flex;flex-wrap:wrap;gap:6px}
+.pp-scope-opt{border:none;border-radius:99px;padding:6px 11px;font-size:11.5px;font-weight:700;background:rgba(120,120,140,.14);color:inherit;cursor:pointer}
+.pp-scope-opt.on{background:#4F46E5;color:#fff}
+.pp-body{flex:1;position:relative;overflow:hidden}
+.pp-reels{position:absolute;inset:0;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;background:#0c0d1a}
+.pp-reels::-webkit-scrollbar{display:none}
+.pp-reel{height:100%;scroll-snap-align:start;scroll-snap-stop:always;position:relative;display:grid;place-items:center}
+.pp-reel video,.pp-reel img{width:100%;height:100%;object-fit:contain;background:#0b0c18;cursor:pointer}
+.pp-reel .ps-seed{position:absolute;inset:0}
+.pr-rail{position:absolute;right:10px;bottom:64px;display:flex;flex-direction:column;gap:12px;z-index:3}
+.pr-rail button{width:44px;height:44px;border-radius:99px;border:none;background:rgba(255,255,255,.16);backdrop-filter:blur(6px);color:#fff;font-size:16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.pr-rail button i{font-style:normal;font-size:9.5px;font-weight:700}
+.pr-rail button.on{background:linear-gradient(135deg,#EF4444,#F59E0B)}
+.pr-cap{position:absolute;left:12px;right:66px;bottom:14px;z-index:3;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+.pr-cap .pr-auth{border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:99px;padding:4px 10px;font-size:11.5px;font-weight:800;cursor:pointer}
+.pr-cap p{font-size:13px;font-weight:600;margin:6px 0 0;line-height:1.4}
+.pr-burst{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:72px;color:#fff;animation:ptBurst .7s ease-out forwards;pointer-events:none;z-index:5;text-shadow:0 0 24px rgba(239,68,68,.8)}
 @keyframes ptBurst{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-96%) scale(1)}}
-.pt-plus{position:absolute;left:18px;bottom:calc(22px + env(safe-area-inset-bottom));z-index:4;width:46px;height:46px;border-radius:99px;border:none;cursor:pointer;
- background:linear-gradient(135deg,#4F46E5,#2DD4BF);color:#fff;font-size:22px;font-weight:800;box-shadow:0 6px 18px rgba(79,70,229,.5);transition:transform .2s}
-.pt-plus:hover{transform:scale(1.08)}
-#fd-prev:empty{display:none}
-#fd-prev{margin:6px 0}
-#fd-prev img{width:100%;max-height:160px;object-fit:cover;border-radius:12px}
+.pp-posts{position:absolute;inset:0;overflow-y:auto;padding:12px}
+.po-card{background:rgba(255,255,255,.7);border-radius:16px;padding:12px;margin-bottom:12px;box-shadow:0 6px 18px rgba(23,23,43,.08)}
+#pulsPanel.night .po-card{background:rgba(255,255,255,.06)}
+.po-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.po-av{width:30px;height:30px;border-radius:99px;font-size:12px;font-weight:800;color:#fff;display:grid;place-items:center;flex:none}
+.po-card img{width:100%;border-radius:12px;max-height:320px;object-fit:cover;margin:6px 0}
+.po-text{font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.po-text a{color:#4F46E5;font-weight:700}
+.po-foot{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.po-skel{height:120px;border-radius:16px;margin-bottom:12px;background:linear-gradient(90deg,#e9e9f2,#f4f4fa,#e9e9f2);background-size:200% 100%;animation:poSkel 1.2s linear infinite}
+@keyframes poSkel{to{background-position:-200% 0}}
+.pp-fab{position:absolute;right:16px;bottom:16px;z-index:6;width:52px;height:52px;border-radius:99px;border:none;cursor:pointer;
+ background:linear-gradient(135deg,#4F46E5,#2DD4BF);color:#fff;font-size:26px;font-weight:800;box-shadow:0 8px 22px rgba(79,70,229,.5)}
+.pp-tab:focus-visible,.pp-scope-opt:focus-visible,.pr-rail button:focus-visible,.pp-fab:focus-visible,.pp-x:focus-visible{outline:3px solid #2DD4BF;outline-offset:2px}
+#fd-prev:empty{display:none}#fd-prev{margin:6px 0}
+#fd-prev img{width:100%;max-height:170px;object-fit:cover;border-radius:12px}
 #fd-prev .fd-vchip{display:inline-flex;align-items:center;gap:6px;background:rgba(79,70,229,.1);color:#4F46E5;border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700}
+.fd-count{font-size:11px;color:#6d6787;text-align:right}
+.fd-seg{display:flex;gap:6px;margin:2px 0 8px}
+.fd-seg button{flex:1;border:none;border-radius:10px;padding:8px;font-size:12.5px;font-weight:700;cursor:pointer;background:rgba(79,70,229,.08);color:#4F46E5}
+.fd-seg button.on{background:#4F46E5;color:#fff}
 /* Geschlechts-Räume: 3-Kachel-Selektor, Grund-Chips, farbenblind-sichere Badges (Icon + Text) */
 .gp-tiles{display:flex;gap:8px;margin:4px 0 8px}
 .gp-tile{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border:1.5px solid rgba(34,28,53,.12);border-radius:14px;cursor:pointer;background:#fff;transition:border-color .15s,background .15s;text-align:center}
@@ -278,9 +307,6 @@ input:focus,select:focus{border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,22
 @media (prefers-color-scheme:dark){ .gp-tile{background:#20233a;border-color:rgba(255,255,255,.12)} .gp-tile b{color:#e8ecff} .gp-rchip span{background:#2a2d47;color:#c9d2ff} }
 :root[data-theme="dark"] .gp-tile{background:#20233a;border-color:rgba(255,255,255,.12)}
 :root[data-theme="dark"] .gp-tile b{color:#e8ecff}
-.pt-nudge{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;background:rgba(255,255,255,.95);border-radius:16px;padding:14px 18px;box-shadow:0 18px 44px rgba(0,0,0,.4);text-align:center;animation:ptNudge .25s ease-out}
-.pt-nudge b{font-size:13.5px}
-@keyframes ptNudge{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
 </style>
 </head>
 <body>
@@ -2680,188 +2706,196 @@ function cprjLoad(force){ if(!window.__sb||!SB_USER||CPRJ.loading||(CPRJ.loaded&
 function sbBoot(){ if(!window.__sb) return
   try{ window.__sb.from('app_flags').select('key,enabled').then(r=>{ (r.data||[]).forEach(f=>{ FLAGS[f.key]=!!f.enabled }); render() }).catch(()=>{}) }catch(e){}
   try{ window.__sb.auth.getUser().then(r=>{ SB_USER=(r.data&&r.data.user)||null
+    if(SB_USER){ syncProfileScope() } // Puls v3: Autorprofil-Scope (Uni/Studiengang/Module) für den Read-Time-Join spiegeln
     if(SB_USER&&FLAGS.companies){ window.__sb.rpc('claim_company_role').then(rr=>{ const v=rr.data // I: Rolle nur bei approved Domain
       if(v&&v!=='waitlist'&&v!=='no-user'){ SB_ROLE='company'; SB_COMPANY=v; state.section='cprojekte' } render() }).catch(()=>render()) }
     render() }).catch(()=>{}) }catch(e){} }
-/* ---- G Campus Feed: Cache + Laden (feed_visible_posts = Report-Schwelle serverseitig) ---- */
-const FEED={items:[],likes:{},mine:{},loaded:false,loading:false,err:null}
+/* Puls v3: Scope wird beim Lesen aus den Autorprofilen berechnet — der Client spiegelt seine
+   eigenen Profil-Felder (Uni/Studiengang/Module) nach profiles, damit die feed()-RPC joinen kann. */
+function syncProfileScope(){ if(!window.__sb||!SB_USER) return
+  const p=DB.user.profile||{}, mods=(DB.user.modules||[]).map(m=>String((m&&m.name)||'').trim()).filter(Boolean)
+  try{ window.__sb.from('profiles').upsert({id:SB_USER.id,university:p.universityId||null,program:p.program||null,modules:mods}).then(()=>{}).catch(()=>{}) }catch(e){} }
+/* ===== CAMPUS PULS v3 — Puls-Sticker (Squircle) + Zwei-Tab-Panel (Reels/Posts) + Read-Time-Scope.
+   Autoren taggen NIE — der Scope wird beim Lesen aus dem Autorprofil berechnet (feed()-RPC).
+   Ehrlichkeits-Gesetz: NIE Fake-Aktivität; leerer Feed zeigt gelabelte Kommilo-Starter-Reels. ===== */
+const pulsTargets=[] // 3D-Klickziele (Litfaßsäule/Board) — Raycast im pointerup-Handler
+const PULS_PLACES={ 'Studierendenhaus':{x:0,y:11.6,z:4}, 'Terrasse':{x:8,y:3.4,z:17}, 'Lagerfeuer':{x:-27,y:3.8,z:-6} }
+const SEED_POSTS=[ // Starter-Reels, klar als Redaktion gelabelt — nie erfundene Zahlen
+ {seed:true,kind:'reel',author:'Kommilo-Redaktion',caption:'Willkommen beim Campus Puls — Reels & Posts aus dem Studi-Leben, ehrlich und ohne Algorithmus.',grad:['#4F46E5','#2DD4BF'],ic:'🎬'},
+ {seed:true,kind:'reel',author:'Kommilo-Redaktion',caption:'Tipp: Lerngruppen mit 3–5 Leuten halten am längsten durch — dein Tisch wartet.',grad:['#312e81','#4F46E5'],ic:'📚'},
+ {seed:true,kind:'reel',author:'Kommilo-Redaktion',caption:'Poste das erste Reel 🎬',cta:true,grad:['#4F46E5','#8B5CF6'],ic:'＋'}]
+const SCOPES=[['uni','Meine Uni','🏫'],['program','Mein Studiengang','🎓'],['module','Meine Module','📘'],['all','Alles auf Kommilo','🌐']]
+const SCOPE_LABEL=s=>((SCOPES.find(x=>x[0]===s)||SCOPES[0])[1])
+const FEED={reels:[],posts:[],items:[],likes:{},mine:{},counts:{},loaded:false,loading:false,err:null}
+const PULS={mounted:false,idx:0,collapsed:false,panel:null,tab:'reels',scope:'uni',scopeOpen:false,drag:false,optimistic:null,_key:null,_io:null,_init:false}
+try{ const s=JSON.parse(localStorage.getItem('puls_ui_v1')||'{}'); PULS.collapsed=s.collapsed===true; if(s.scope)PULS.scope=s.scope }catch(e){}
+function pulsSave(){ try{ localStorage.setItem('puls_ui_v1',JSON.stringify({collapsed:PULS.collapsed,scope:PULS.scope})) }catch(e){} }
+function pulsFlagOn(){ return FLAGS.puls!==false&&SB_ROLE!=='company' }
+function pulsWorldSection(){ return state.section==='campus'||state.section==='partner'||state.section==='gruppen'||state.section==='aktivitaeten' }
+function pulsReduced(){ try{ return matchMedia('(prefers-reduced-motion:reduce)').matches }catch(e){ return false } }
+const pulsBlocked=a=>(DB.user.blockedUsers||[]).some(b=>(b&&b.name?b.name:b)===a)
+const pulsKind=p2=>p2.kind||((p2.media_type==='video'||p2.type==='video')?'reel':'post') // Pre-06-Fallback
+function pulsReels(){ return FEED.reels.length?FEED.reels:SEED_POSTS }
+function pulsItems(){ return FEED.items.length?FEED.items:SEED_POSTS } // In-World-Puls nutzt die kombinierte Liste
+function pulsAvatar(a){ const s=String(a||'?'), h=[...s].reduce((x,c)=>((x*31+c.charCodeAt(0))|0),7)
+  return { col:'hsl('+(Math.abs(h)%360)+',52%,55%)', ini:(s.replace('Kommilo-Redaktion','K').trim()[0]||'?').toUpperCase() } }
+function pulsAlias(a){ return a==='Kommilo-Redaktion'?a:'Studi-'+String(a||'').slice(0,4) }
+/* ---- Laden: v3-Scope-RPC feed(scope,kind); Fallback feed_visible_posts (falls 06 noch nicht lief) ---- */
 function feedLoad(force){ if(!window.__sb||!SB_USER||FEED.loading||(FEED.loaded&&!force)) return
   FEED.loading=true; FEED.err=null
-  window.__sb.from('feed_visible_posts').select('*').order('created_at',{ascending:false}).limit(30).then(async r=>{
-    if(r.error){ FEED.err='Feed nicht erreichbar'; FEED.loading=false; render(); return }
-    const items=(r.data||[]).filter(p2=>!(DB.user.blockedUsers||[]).includes(p2.author))
+  const done=async rows=>{
+    const items=(rows||[]).filter(p2=>!pulsBlocked(p2.author))
     const lc=await window.__sb.from('post_like_counts').select('*').then(x=>x.data||[]).catch(()=>[])
     FEED.likes={}; lc.forEach(l=>FEED.likes[l.post_id]=l.likes)
     const ml=await window.__sb.from('post_likes').select('post_id').eq('user_id',SB_USER.id).then(x=>x.data||[]).catch(()=>[])
     FEED.mine={}; ml.forEach(l=>FEED.mine[l.post_id]=true)
-    for(const it of items){ if(it.storage_path){ // kurzlebige signed URLs (privater Bucket)
-      const su=await window.__sb.storage.from('media').createSignedUrl(it.storage_path,3600).catch(()=>null)
-      it._url=su&&su.data?su.data.signedUrl:null }
-      if(it.thumb_path){ const st=await window.__sb.storage.from('media').createSignedUrl(it.thumb_path,3600).catch(()=>null)
-        it._thumb=st&&st.data?st.data.signedUrl:null } }
     const cc=await window.__sb.from('post_comment_counts').select('*').then(x=>x.data||[]).catch(()=>[])
-    PULS.counts={}; cc.forEach(c=>PULS.counts[c.post_id]=c.comments)
-    FEED.items=items; FEED.loaded=true; FEED.loading=false; PULS.optimistic=null; render()
-    PULS.idx=0; pulsRender(); pulsTheaterRebuild()
-    if(typeof pulsWorldRefresh==='function') pulsWorldRefresh() }).catch(()=>{ FEED.err='Feed nicht erreichbar'; FEED.loading=false; render() }) }
-/* ===== CAMPUS PULS — der Feed als lebendige Oberfläche (Owner-Brief, siehe FEATURES.md).
-   Drei Flächen: Puls-Fenster (Mini-Karte), Puls-Theater (immersiver Player über der 3D-Welt),
-   In-World-Puls (Litfaßsäule/Board/Bubbles — Aufbau vor dem Render-Loop weiter unten).
-   Ehrlichkeits-Gesetz: NIE Fake-Aktivität — leerer Feed zeigt klar gelabelte Redaktions-Starter. ===== */
-const pulsTargets=[] // 3D-Klickziele (Litfaßsäule, Bubbles) — Raycast im pointerup-Handler
-const PULS_PLACES={ 'Studierendenhaus':{x:0,y:11.6,z:4}, 'Terrasse':{x:8,y:3.4,z:17}, 'Lagerfeuer':{x:-27,y:3.8,z:-6} } // Ort-Tag → Bubble-Anker (Welt-Koordinaten über dem Ort)
-const SEED_POSTS=[ // Kommilo-Redaktion — als Starter gelabelt, ohne erfundene Zahlen (Like/Melden ausgeblendet)
- {seed:true,author:'Kommilo-Redaktion',caption:'Willkommen beim Campus Puls! Hier landen Fotos & Reels aus dem Studi-Leben — ehrlich, chronologisch, ohne Algorithmus.',tag:'#Start',grad:['#4F46E5','#2DD4BF'],ic:'🎬'},
- {seed:true,author:'Kommilo-Redaktion',caption:'Tipp: Lerngruppen mit 3–5 Leuten halten am längsten durch. Deine wartet im Reiter „Lerngruppen".',tag:'#Lernen',grad:['#312e81','#4F46E5'],ic:'📚'},
- {seed:true,author:'Kommilo-Redaktion',caption:'Abends flackern die Lagerfeuer — schau bei „Aktivitäten" vorbei und setz dich dazu.',tag:'#Aktivitäten',grad:['#0f766e','#2DD4BF'],ic:'🔥'},
- {seed:true,author:'Kommilo-Redaktion',caption:'Zeig den Campus deinen Leuten — poste das erste Reel 🎬',cta:true,tag:'#DuBistDran',grad:['#4F46E5','#8B5CF6'],ic:'＋'}]
-const PULS={mounted:false,idx:0,collapsed:false,theater:null,tIdx:0,drag:false,filter:'alle',watch:0,nudgeNext:0,watchT:null,optimistic:null,counts:{},_key:null,_init:false}
-try{ PULS.collapsed=JSON.parse(localStorage.getItem('puls_ui_v1')||'{}').collapsed===true }catch(e){}
-function pulsFlagOn(){ return FLAGS.puls!==false&&SB_ROLE!=='company' }
-function pulsWorldSection(){ return state.section==='campus'||state.section==='partner'||state.section==='gruppen'||state.section==='aktivitaeten' }
-function pulsItems(){ let it=FEED.items
-  if(PULS.filter==='studiengang'){ const my=(DB.user.modules||[]).map(m=>String((m&&m.name)||m).toLowerCase()); it=it.filter(p2=>p2.module_tag&&my.includes(String(p2.module_tag).toLowerCase())) }
-  else if(PULS.filter==='aktivitaeten') it=it.filter(p2=>p2.activity_tag)
-  else if(PULS.filter==='lernen') it=it.filter(p2=>p2.module_tag)
-  return it.length?it:SEED_POSTS }
-function pulsSeedHTML(p2){ return '<div class="pw-seed" style="background:linear-gradient(135deg,'+p2.grad[0]+','+p2.grad[1]+')"><span class="pw-ic">'+p2.ic+'</span><p>'+esc(p2.caption||'')+'</p>'+(p2.cta?'<button class="btn grad sm" data-act="cta">Jetzt posten</button>':'')+'</div>' }
-function pulsMediaHTML(p2,mini){ if(p2.seed) return pulsSeedHTML(p2)
-  if(p2.type==='video'){ if(mini&&p2._thumb) return '<img src="'+p2._thumb+'" loading="lazy" alt="">' // Fenster braucht dank Thumb KEIN Video-Decode
-    return '<video src="'+(p2._url||'')+'"'+(p2._thumb?' poster="'+p2._thumb+'"':'')+' muted loop playsinline preload="metadata"'+(mini?' autoplay':'')+'></video>' }
-  const src=(mini&&p2._thumb)?p2._thumb:(p2._url||p2._thumb||'')
-  if(src) return '<img src="'+src+'" loading="lazy" alt="">'
-  return pulsSeedHTML({grad:['#312e81','#4F46E5'],ic:'💬',caption:p2.caption||''}) } // Text-Post → Farbkarte
+    FEED.counts={}; cc.forEach(c=>FEED.counts[c.post_id]=c.comments)
+    for(const it of items){ if(it.storage_path){ const su=await window.__sb.storage.from('media').createSignedUrl(it.storage_path,3600).catch(()=>null); it._url=su&&su.data?su.data.signedUrl:null }
+      if(it.thumb_path){ const st=await window.__sb.storage.from('media').createSignedUrl(it.thumb_path,3600).catch(()=>null); it._thumb=st&&st.data?st.data.signedUrl:null } }
+    FEED.reels=items.filter(p2=>pulsKind(p2)==='reel'); FEED.posts=items.filter(p2=>pulsKind(p2)==='post'); FEED.items=items
+    FEED.loaded=true; FEED.loading=false; FEED.err=null; PULS.optimistic=null
+    render(); pulsRender(); pulsPanelRefresh(); if(typeof pulsWorldRefresh==='function') pulsWorldRefresh() }
+  const fallback=()=>window.__sb.from('feed_visible_posts').select('*').order('created_at',{ascending:false}).limit(60)
+    .then(r2=>{ if(r2.error){ FEED.err='Feed nicht erreichbar'; FEED.loading=false; render(); return } done(r2.data) })
+    .catch(()=>{ FEED.err='Feed nicht erreichbar'; FEED.loading=false; render() })
+  try{ window.__sb.rpc('feed',{p_scope:PULS.scope,p_kind:null}).then(r=>{ if(r.error){ fallback(); return } done(r.data) }).catch(fallback) }catch(e){ fallback() } }
+/* ---- Sticker (geschlossen) ---- */
 function pulsPausedNow(){ const m=document.getElementById('modal')
-  return document.hidden||PULS.drag||!!PULS.theater||(m&&m.style.display==='grid') }
-function pulsPauseSync(){ const w=document.getElementById('pulsWin'); if(!w) return
+  return document.hidden||PULS.drag||!!PULS.panel||(m&&m.style.display==='grid') }
+function pulsPauseSync(){ const w=document.getElementById('pulsStick'); if(!w) return
   const p2=pulsPausedNow(); w.classList.toggle('paused',p2)
-  const v=w.querySelector('.pw-media video'); if(v){ if(p2){ try{v.pause()}catch(e){} } else v.play().catch(()=>{}) } }
-function pulsCollapse(v){ PULS.collapsed=v; try{ localStorage.setItem('puls_ui_v1',JSON.stringify({collapsed:v})) }catch(e){}; pulsSync() }
-function pulsRender(){ const w=document.getElementById('pulsWin'); if(!w||w.style.display==='none') return
-  const items=pulsItems(); if(PULS.idx>=items.length) PULS.idx=0
-  const p2=items[PULS.idx]
-  w.querySelector('.pw-media').innerHTML=(PULS.optimistic?'<div class="pw-optim">⏳ Wird veröffentlicht …</div>':'')+pulsMediaHTML(p2,true)
-  const tag=p2.seed?p2.tag:(p2.activity_tag?'#'+p2.activity_tag:(p2.module_tag?'#'+p2.module_tag:(p2.place_tag?'📍 '+p2.place_tag:'')))
-  w.querySelector('.pw-meta').innerHTML='<span class="pw-author">'+esc(p2.seed?p2.author+' · Starter':'Studi-'+String(p2.author||'').slice(0,4))+'</span>'+(tag?'<span class="pw-tag">'+esc(tag)+'</span>':'')
-  const lk=w.querySelector('.pw-like'); lk.style.display=p2.seed?'none':''; lk.textContent=FEED.mine[p2.id]?'♥':'♡'
-  const ring=w.querySelector('.pw-ring') // Ring-Animation neu starten — animationend triggert den nächsten Beitrag
-  ring.style.animation='none'; void ring.getBoundingClientRect(); ring.style.animation='pwring '+sceneConfig.puls.cycleSec+'s linear'
+  const v=w.querySelector('.ps-media video'); if(v){ if(p2){ try{v.pause()}catch(e){} } else if(!PULS.panel) v.play().catch(()=>{}) } }
+function pulsCollapse(v){ PULS.collapsed=v; pulsSave(); pulsSync() }
+function pulsChipsBottom(){ try{ const c=document.querySelector('#hud .stats.br'); if(c){ const r=c.getBoundingClientRect(); return Math.max(72,Math.round(innerHeight-r.top)+12) } }catch(e){} return 88 }
+function pulsRender(){ const w=document.getElementById('pulsStick'); if(!w||w.style.display==='none') return
+  const items=pulsReels(); if(PULS.idx>=items.length) PULS.idx=0
+  const p2=items[PULS.idx]||items[0]; const av=pulsAvatar(p2.author)
+  w.style.bottom=pulsChipsBottom()+'px'
+  w.classList.toggle('opt',!!PULS.optimistic)
+  w.querySelector('.ps-media').innerHTML=pulsReelMedia(PULS.optimistic?{seed:true,grad:['#4F46E5','#8B5CF6'],ic:'⏳',caption:'Wird veröffentlicht …'}:p2,true)
+  w.querySelector('.ps-av').textContent=av.ini; w.querySelector('.ps-av').style.background=av.col
+  const prog=w.querySelector('.ps-prog i') // 6-s-Balken je Reel neu starten (animationend → nächstes)
+  if(prog&&!pulsReduced()){ prog.style.animation='none'; void prog.getBoundingClientRect(); prog.style.animation='psProg 6s linear forwards' }
   pulsPauseSync() }
-function pulsNext(){ PULS.idx=(PULS.idx+1)%pulsItems().length; pulsRender() }
+function pulsNext(){ const n=pulsReels().length; PULS.idx=(PULS.idx+1)%n; pulsRender() }
+function pulsReelMedia(p2,poster){ if(p2.seed) return pulsSeedHTML(p2)
+  if(p2._url&&(p2.media_type==='video'||pulsKind(p2)==='reel')){ if(poster&&p2._thumb) return '<img src="'+p2._thumb+'" alt="Vorschau">'
+    return '<video src="'+p2._url+'" muted loop playsinline preload="metadata"'+(poster?' autoplay':'')+'></video>' }
+  const src=p2._thumb||p2._url; return src?'<img src="'+src+'" alt="">':pulsSeedHTML({grad:['#312e81','#4F46E5'],ic:'💬',caption:p2.caption||p2.text||''}) }
+function pulsSeedHTML(p2){ return '<div class="ps-seed" style="background:linear-gradient(135deg,'+p2.grad[0]+','+p2.grad[1]+')"><span class="pw-ic">'+p2.ic+'</span><p>'+esc(p2.caption||'')+'</p>'+(p2.cta?'<button class="btn grad sm" data-act="cta">Jetzt posten</button>':'')+'</div>' }
 function pulsMount(){ if(PULS.mounted||!document.body) return; PULS.mounted=true
-  const w=document.createElement('div'); w.id='pulsWin'; w.style.display='none'
-  w.innerHTML='<div class="pw-top"><span class="pw-brand">◉ Campus Puls</span>'+
-   '<svg class="pw-ringw" viewBox="0 0 20 20"><circle class="pw-ring" cx="10" cy="10" r="8"/></svg>'+
-   '<button class="pw-min" title="Minimieren">–</button></div>'+
-   '<div class="pw-media"></div><div class="pw-meta"></div>'+
-   '<div class="pw-acts"><button class="pw-like" title="Gefällt mir">♡</button><button class="pw-openb" title="Im Theater öffnen">↗</button></div>'+
-   '<button class="pw-plus" title="Beitrag posten">＋</button>'
-  document.body.appendChild(w)
-  const d=document.createElement('button'); d.id='pulsDot'; d.title='Campus Puls öffnen'; d.style.display='none'; document.body.appendChild(d)
-  w.addEventListener('click',e=>{ if(e.target.closest('button')) return; pulsOpenTheater(PULS.idx) })
-  w.querySelector('.pw-min').addEventListener('click',()=>pulsCollapse(true))
-  d.addEventListener('click',()=>pulsCollapse(false))
-  w.querySelector('.pw-like').addEventListener('click',()=>{ const p2=pulsItems()[PULS.idx]
-    if(p2&&!p2.seed){ actions.feedLike(p2.id); w.querySelector('.pw-like').textContent=FEED.mine[p2.id]?'♥':'♡' } })
-  w.querySelector('.pw-openb').addEventListener('click',()=>pulsOpenTheater(PULS.idx))
-  w.querySelector('.pw-plus').addEventListener('click',()=>actions.feedUploadModal())
-  w.querySelector('.pw-ring').addEventListener('animationend',()=>{ if(!pulsPausedNow()) pulsNext() })
-  const med=w.querySelector('.pw-media') // sanfter Parallax-Tilt nur aufs Medium (Fenster-Transform gehört der Atem-Animation)
-  w.addEventListener('mousemove',e=>{ const r=w.getBoundingClientRect()
-    med.style.transform='perspective(600px) rotateY('+(((e.clientX-r.left)/r.width-.5)*6).toFixed(2)+'deg) rotateX('+((-((e.clientY-r.top)/r.height-.5))*6).toFixed(2)+'deg) scale(1.03)' })
-  w.addEventListener('mouseleave',()=>{ med.style.transform='' })
-  controls.addEventListener('start',()=>{ PULS.drag=true; pulsPauseSync() })   // Kamera-Drag: nie GPU vom Ziehen stehlen
+  const w=document.createElement('button'); w.id='pulsStick'; w.type='button'; w.setAttribute('aria-label','Campus Puls öffnen'); w.style.display='none'
+  w.innerHTML='<span class="ps-prog"><i></i></span><span class="ps-pill"><b></b> Puls</span>'+
+   '<span class="ps-min" role="button" aria-label="Einklappen">–</span>'+
+   '<span class="ps-clip"><span class="ps-media"></span></span>'+
+   '<span class="ps-av"></span>'+(PULS.hintDone?'':'<span class="ps-hint">Tippen zum Öffnen</span>')
+  document.body.appendChild(w); PULS.hintDone=true
+  const b=document.createElement('button'); b.id='pulsBubble'; b.type='button'; b.title='Campus Puls'; b.setAttribute('aria-label','Campus Puls öffnen'); b.textContent='🪑'; b.style.display='none'
+  document.body.appendChild(b)
+  w.addEventListener('click',e=>{ if(e.target.closest('.ps-min')){ pulsCollapse(true); return } pulsOpen('reels',PULS.idx) })
+  w.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pulsOpen('reels',PULS.idx) } })
+  b.addEventListener('click',()=>pulsCollapse(false))
+  b.addEventListener('keydown',e=>{ if(e.key==='Enter'){ pulsCollapse(false) } })
+  w.addEventListener('animationend',e=>{ if(e.animationName==='psProg'&&!pulsPausedNow()) pulsNext() })
+  if(!pulsReduced()){ const med=w.querySelector('.ps-media') // Parallax nur aufs Medium
+    w.addEventListener('mousemove',ev=>{ const r=w.getBoundingClientRect(); med.style.transform='translate('+(((ev.clientX-r.left)/r.width-.5)*8).toFixed(1)+'px,'+(((ev.clientY-r.top)/r.height-.5)*8).toFixed(1)+'px)' })
+    w.addEventListener('mouseleave',()=>{ med.style.transform='' }) }
+  controls.addEventListener('start',()=>{ PULS.drag=true; pulsPauseSync() })
   controls.addEventListener('end',()=>{ PULS.drag=false; pulsPauseSync() })
   document.addEventListener('visibilitychange',pulsPauseSync)
-  const mo=new MutationObserver(pulsPauseSync); mo.observe(document.getElementById('modal'),{attributes:true,attributeFilter:['style']}) }
+  try{ new MutationObserver(pulsPauseSync).observe(document.getElementById('modal'),{attributes:true,attributeFilter:['style']}) }catch(e){} }
 function pulsSync(){ if(!PULS.mounted&&pulsFlagOn()) pulsMount()
   if(!PULS.mounted) return
-  const w=document.getElementById('pulsWin'), d=document.getElementById('pulsDot')
-  const show=pulsFlagOn()&&pulsWorldSection()&&!currentGuard()   // Gate offen (Onboarding) → Fenster weg, nicht nur pausiert
-  w.classList.toggle('night',state.mode==='nacht'); ;(typeof pulsGroup!=='undefined')&&(pulsGroup.visible=pulsFlagOn())
+  const w=document.getElementById('pulsStick'), b=document.getElementById('pulsBubble')
+  const show=pulsFlagOn()&&pulsWorldSection()&&!currentGuard()
+  if(typeof pulsGroup!=='undefined') pulsGroup.visible=pulsFlagOn()
   w.style.display=(show&&!PULS.collapsed)?'':'none'
-  d.style.display=(show&&PULS.collapsed)?'':'none'
-  if(show){ feedLoad(); if(!PULS._init){ PULS._init=true; pulsRender() } }
-  if(!show&&PULS.theater) pulsCloseTheater()
+  b.style.display=(show&&PULS.collapsed)?'':'none'
+  if(b.style.display!=='none') b.style.bottom=pulsChipsBottom()+'px'
+  if(show){ feedLoad(); if(!PULS._init){ PULS._init=true; pulsRender() } else if(!PULS.collapsed) pulsRender() }
+  if(!show&&PULS.panel) pulsClose()
   pulsPauseSync() }
-/* ---- Theater: immersiver Player ÜBER der lebenden 3D-Welt (geblurrt, nicht schwarz) ---- */
-function pulsItemHTML(p2,i){ const own=SB_USER&&p2.author===SB_USER.id
-  const rail=p2.seed?'':'<div class="pt-rail">'+
-   '<button data-act="like" data-id="'+p2.id+'"'+(FEED.mine[p2.id]?' class="on"':'')+'>'+(FEED.mine[p2.id]?'♥':'♡')+'<i>'+(FEED.likes[p2.id]||0)+'</i></button>'+
-   '<button data-act="comments" data-id="'+p2.id+'">💬<i>'+(PULS.counts[p2.id]||0)+'</i></button>'+
-   '<button data-act="share" data-id="'+p2.id+'">↗</button>'+
-   (own?'<button data-act="del" data-id="'+p2.id+'" data-path="'+esc(p2.storage_path||'')+'" data-thumb="'+esc(p2.thumb_path||'')+'" title="Löschen">🗑</button>'
-       :'<button data-act="report" data-id="'+p2.id+'" title="Melden">⚑</button>')+'</div>'
-  const tags=p2.seed?'':[p2.module_tag?'<button data-act="tagM">#'+esc(p2.module_tag)+'</button>':'',
-   p2.activity_tag?'<button data-act="tagA">#'+esc(p2.activity_tag)+'</button>':'',
-   p2.place_tag?'<span class="pt-place">📍 '+esc(p2.place_tag)+'</span>':''].join('')
-  const author=p2.seed?'<span class="pt-author">'+esc(p2.author)+' · Starter</span>'
-   :'<button class="pt-author" data-act="author" data-id="'+esc(p2.author)+'">Studi-'+esc(String(p2.author||'').slice(0,4))+(own?' · Du':'')+'</button>'
-  return '<div class="pt-item" data-i="'+i+'"><div class="pt-frame">'+pulsMediaHTML(p2,false)+rail+
-   '<div class="pt-cap">'+author+(p2.caption&&!p2.seed?'<p>'+esc(p2.caption)+'</p>':'')+(tags?'<div class="pt-tags">'+tags+'</div>':'')+'</div></div></div>' }
-function pulsTheaterRebuild(){ const t=PULS.theater; if(!t) return
-  const items=pulsItems(); if(PULS.tIdx>=items.length) PULS.tIdx=Math.max(0,items.length-1)
-  t.querySelectorAll('.pt-chip').forEach(c=>c.classList.toggle('on',c.dataset.f===PULS.filter))
-  const sc=t.querySelector('.pt-scroll'); if(t._io) t._io.disconnect()
-  sc.innerHTML=items.map((p2,i)=>pulsItemHTML(p2,i)).join('')
-  const io=new IntersectionObserver(es=>es.forEach(en=>{ const v=en.target.querySelector('video')
-    if(en.isIntersecting){ PULS.tIdx=+en.target.dataset.i; if(v) v.play().catch(()=>{}) } else if(v) v.pause() }),{threshold:[.6]})
-  ;[...sc.children].forEach(el=>io.observe(el)); t._io=io
-  const tgt=sc.children[PULS.tIdx]; if(tgt) tgt.scrollIntoView() }
-function pulsSetFilter(k){ PULS.filter=k; PULS.idx=0; pulsTheaterRebuild(); if(!PULS.theater) pulsRender() }
-function pulsTheaterClick(e){ const b=e.target.closest('[data-act]')
-  if(b){ const id=b.dataset.id, act=b.dataset.act
-    if(act==='like'){ actions.feedLike(id); b.classList.toggle('on',!!FEED.mine[id]); b.innerHTML=(FEED.mine[id]?'♥':'♡')+'<i>'+(FEED.likes[id]||0)+'</i>' }
-    else if(act==='comments') actions.pulsComments(id)
-    else if(act==='share') actions.pulsShare(id)
-    else if(act==='report'){ actions.feedReport(id); pulsTheaterRebuild() }
-    else if(act==='del'){ actions.feedDelete(id,b.dataset.path||'',b.dataset.thumb||''); pulsCloseTheater() }
-    else if(act==='author') actions.pulsAuthor(id)
-    else if(act==='tagA') pulsSetFilter('aktivitaeten')
-    else if(act==='tagM') pulsSetFilter('lernen')
-    else if(act==='cta') actions.feedUploadModal()
-    return }
-  if(e.target.classList.contains('pt-chip')){ pulsSetFilter(e.target.dataset.f); return }
-  if(e.target.classList.contains('pt-plus')){ actions.feedUploadModal(); return } // ＋ auch im Theater (Owner-Brief)
-  if(e.target.classList.contains('pt-x')){ pulsCloseTheater(); return }
-  const vid=e.target.closest('video'); if(vid){ vid.muted=!vid.muted; if(!vid.muted) vid.play().catch(()=>{}) } } // Tap = Ton
-function pulsTheaterDbl(e){ const it=e.target.closest('.pt-item'); if(!it) return
-  const p2=pulsItems()[+it.dataset.i]; if(!p2||p2.seed) return
-  if(!FEED.mine[p2.id]) actions.feedLike(p2.id)   // Doppel-Tap liked (nimmt nie zurück)
-  const h=document.createElement('div'); h.className='pt-burst'; h.textContent='♥'
-  it.querySelector('.pt-frame').appendChild(h); setTimeout(()=>h.remove(),700)
-  const lb=it.querySelector('[data-act="like"]'); if(lb){ lb.classList.add('on'); lb.innerHTML='♥<i>'+(FEED.likes[p2.id]||0)+'</i>' } }
-function pulsNudge(){ const t=PULS.theater; if(!t) return   // Anti-Doomscroll: charmant, nie blockierend, nichts wird geloggt
-  const n=document.createElement('div'); n.className='pt-nudge'
-  n.innerHTML='<b>Genug gescrollt — dein Lerntisch wartet 😉</b><div class="mrow" style="justify-content:center;margin-top:8px">'+
-   '<button class="btn grad sm" data-n="go">Zur Lerngruppe</button><button class="btn ghost sm" data-n="more">5 min weiter</button></div>'
-  n.addEventListener('click',e=>{ const b=e.target.closest('[data-n]'); if(!b) return
-    if(b.dataset.n==='go'){ pulsCloseTheater(); actions.nav('gruppen') } else { PULS.nudgeNext=PULS.watch+300; n.remove() } })
-  t.appendChild(n) }
-function pulsOpenTheater(startIdx){ if(PULS.theater||!pulsFlagOn()) return
-  const t=document.createElement('div'); t.id='pulsTheater'
-  t.innerHTML='<div class="pt-bg"></div><button class="pt-x" title="Schließen">✕</button>'+
-   '<div class="pt-chips">'+[['alle','Alles'],['studiengang','Mein Studiengang'],['aktivitaeten','Aktivitäten'],['lernen','Lernen']].map(([k,l])=>'<button class="pt-chip" data-f="'+k+'">'+l+'</button>').join('')+'</div>'+
-   '<div class="pt-scroll"></div><button class="pt-plus" title="Beitrag posten">＋</button>'
-  document.body.appendChild(t); PULS.theater=t; PULS.tIdx=startIdx||0
-  pulsTheaterRebuild()
-  requestAnimationFrame(()=>t.classList.add('in'))
-  t.addEventListener('click',pulsTheaterClick); t.addEventListener('dblclick',pulsTheaterDbl)
-  PULS._key=e=>{ if(e.key==='Escape') pulsCloseTheater()
-    else if(e.key==='ArrowDown'||e.key==='ArrowUp'){ const sc=t.querySelector('.pt-scroll')
-      sc.scrollBy({top:(e.key==='ArrowDown'?1:-1)*sc.clientHeight,behavior:'smooth'}); e.preventDefault() } }
-  addEventListener('keydown',PULS._key)
-  PULS.watch=0; PULS.nudgeNext=sceneConfig.puls.nudgeAfterSec
-  PULS.watchT=setInterval(()=>{ if(document.hidden||!PULS.theater) return
-    PULS.watch++; if(PULS.watch>=PULS.nudgeNext&&!PULS.theater.querySelector('.pt-nudge')) pulsNudge() },1000)
-  pulsPauseSync() }
-function pulsCloseTheater(){ const t=PULS.theater; if(!t) return
-  PULS.theater=null; clearInterval(PULS.watchT); PULS.watchT=null
-  if(t._io) t._io.disconnect(); if(PULS._key){ removeEventListener('keydown',PULS._key); PULS._key=null }
+/* ---- Offenes Panel (Reels · Posts) ---- */
+function pulsScopeBar(){ return '<div class="pp-scopebar">'+
+  (PULS.scopeOpen
+    ? '<div class="pp-scope-opts" role="group" aria-label="Anzeige-Umfang">'+SCOPES.map(([k,l,ic])=>'<button class="pp-scope-opt'+(PULS.scope===k?' on':'')+'" data-scope="'+k+'">'+ic+' '+esc(l)+'</button>').join('')+'</div>'
+    : '<button class="pp-scope-pill" data-scopepill aria-expanded="false">Anzeigen: '+esc(SCOPE_LABEL(PULS.scope))+' ▾</button>')+'</div>' }
+function pulsPanelShell(){ return '<div class="pp-bg" data-close></div><div class="pp-card">'+
+  '<button class="pp-x" data-close aria-label="Schließen">✕</button>'+
+  '<div class="pp-tabs" role="tablist">'+
+   '<button class="pp-tab'+(PULS.tab==='reels'?' on':'')+'" data-tab="reels" role="tab">Reels</button>'+
+   '<button class="pp-tab'+(PULS.tab==='posts'?' on':'')+'" data-tab="posts" role="tab">Posts</button></div>'+
+  pulsScopeBar()+'<div class="pp-body"></div>'+
+  '<button class="pp-fab" data-fab aria-label="Neu erstellen">＋</button></div>' }
+function pulsReelItemHTML(p2,i){ const own=SB_USER&&p2.author===SB_USER.id, liked=!!FEED.mine[p2.id]
+  const rail=p2.seed?'':'<div class="pr-rail">'+
+   '<button data-a="like" data-id="'+p2.id+'"'+(liked?' class="on"':'')+' aria-label="Gefällt mir">'+(liked?'♥':'♡')+'<i>'+(FEED.likes[p2.id]||0)+'</i></button>'+
+   '<button data-a="comment" data-id="'+p2.id+'" aria-label="Kommentare">💬<i>'+(FEED.counts[p2.id]||0)+'</i></button>'+
+   '<button data-a="share" data-id="'+p2.id+'" aria-label="Teilen">↗</button>'+
+   (own?'<button data-a="del" data-id="'+p2.id+'" data-path="'+esc(p2.storage_path||'')+'" data-thumb="'+esc(p2.thumb_path||'')+'" aria-label="Löschen">🗑</button>'
+       :'<button data-a="report" data-id="'+p2.id+'" aria-label="Melden">⚑</button>')+'</div>'
+  const cap=p2.seed?'':'<div class="pr-cap"><button class="pr-auth" data-a="author" data-id="'+esc(p2.author)+'">'+esc(pulsAlias(p2.author))+(own?' · Du':'')+'</button>'+(p2.caption?'<p>'+esc(String(p2.caption).slice(0,150))+'</p>':'')+'</div>'
+  return '<div class="pp-reel" data-i="'+i+'">'+pulsReelMedia(p2,false)+rail+cap+'</div>' }
+function pulsLinkify(t){ return esc(t).replace(/(https:\/\/[^\s]+)/g,m=>'<a href="'+m+'" target="_blank" rel="noopener noreferrer">'+m+'</a>') }
+function pulsPostCardHTML(p2){ const own=SB_USER&&p2.author===SB_USER.id, av=pulsAvatar(p2.author), liked=!!FEED.mine[p2.id]
+  return '<div class="po-card"><div class="po-head"><span class="po-av" style="background:'+av.col+'">'+av.ini+'</span>'+
+   '<b>'+esc(pulsAlias(p2.author))+'</b><span class="mut" style="margin-left:auto;font-size:11px">'+new Date(p2.created_at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span></div>'+
+   (p2._url&&p2.media_type==='image'?'<img src="'+p2._url+'" loading="lazy" alt="">':'')+
+   (p2.text?'<div class="po-text">'+pulsLinkify(p2.text)+'</div>':'')+
+   '<div class="po-foot"><button class="btn ghost sm" data-a="like" data-id="'+p2.id+'">'+(liked?'♥':'♡')+' '+(FEED.likes[p2.id]||0)+'</button>'+
+   '<button class="btn ghost sm" data-a="comment" data-id="'+p2.id+'">💬 '+(FEED.counts[p2.id]||0)+'</button>'+
+   (own?'<button class="btn ghost sm" data-a="del" data-id="'+p2.id+'" data-path="'+esc(p2.storage_path||'')+'" data-thumb="'+esc(p2.thumb_path||'')+'">Löschen</button>'
+       :'<button class="btn ghost sm" data-a="report" data-id="'+p2.id+'">Melden</button>')+'</div></div>' }
+function pulsPanelBody(){ const body=PULS.panel&&PULS.panel.querySelector('.pp-body'); if(!body) return
+  if(PULS._io){ PULS._io.disconnect(); PULS._io=null }
+  if(!FEED.loaded&&!FEED.reels.length&&!FEED.posts.length){ body.innerHTML=PULS.tab==='posts'?'<div class="pp-posts"><div class="po-skel"></div><div class="po-skel"></div></div>':'<div class="pp-reels"></div>'; if(PULS.tab==='reels'){ const r=pulsReels(); body.querySelector('.pp-reels').innerHTML=r.map((p2,i)=>pulsReelItemHTML(p2,i)).join('') } return }
+  if(PULS.tab==='reels'){ const reels=pulsReels()
+    body.innerHTML='<div class="pp-reels">'+reels.map((p2,i)=>pulsReelItemHTML(p2,i)).join('')+'</div>'
+    const sc=body.querySelector('.pp-reels'); const io=new IntersectionObserver(es=>es.forEach(en=>{ const v=en.target.querySelector('video')
+      if(en.isIntersecting){ PULS.idx=+en.target.dataset.i||0; if(v) v.play().catch(()=>{}) } else if(v) v.pause() }),{threshold:[.6]})
+    ;[...sc.children].forEach(el=>io.observe(el)); PULS._io=io
+    const tgt=sc.children[Math.min(PULS.idx,sc.children.length-1)]; if(tgt) tgt.scrollIntoView() }
+  else { const posts=FEED.posts
+    body.innerHTML='<div class="pp-posts">'+(posts.length?posts.map(p2=>pulsPostCardHTML(p2)).join(''):(FEED.loaded?'<div class="mut" style="padding:20px;text-align:center">Noch keine Posts in diesem Umfang — erstelle den ersten oder wechsle den Anzeige-Umfang.</div>':'<div class="po-skel"></div><div class="po-skel"></div>'))+'</div>' } }
+function pulsPanelRefresh(){ if(PULS.panel){ PULS.panel.querySelector('.pp-scopebar').outerHTML=pulsScopeBar(); pulsPanelBody() } }
+function pulsSetTab(t){ PULS.tab=t; if(PULS.panel){ PULS.panel.querySelectorAll('.pp-tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t)); pulsPanelBody() } }
+function pulsSetScope(k){ PULS.scope=k; PULS.scopeOpen=false; pulsSave(); if(PULS.panel){ PULS.panel.querySelector('.pp-scopebar').outerHTML=pulsScopeBar() } feedLoad(true) }
+function pulsPanelClick(e){ if(e.target.closest('[data-close]')&&!e.target.closest('.pp-card')){ pulsClose(); return }
+  if(e.target.closest('.pp-x')){ pulsClose(); return }
+  const tab=e.target.closest('.pp-tab'); if(tab){ pulsSetTab(tab.dataset.tab); return }
+  if(e.target.closest('[data-scopepill]')){ PULS.scopeOpen=true; PULS.panel.querySelector('.pp-scopebar').outerHTML=pulsScopeBar(); return }
+  const so=e.target.closest('.pp-scope-opt'); if(so){ pulsSetScope(so.dataset.scope); return }
+  if(e.target.closest('[data-fab]')){ actions.feedUploadModal(); return }
+  const b=e.target.closest('[data-a]'); if(b){ const id=b.dataset.id, a=b.dataset.a
+    if(a==='like'){ actions.feedLike(id); pulsPanelBody() }
+    else if(a==='comment') actions.pulsComments(id)
+    else if(a==='share') actions.pulsShare(id)
+    else if(a==='report'){ actions.feedReport(id); pulsPanelBody() }
+    else if(a==='del'){ actions.feedDelete(id,b.dataset.path||'',b.dataset.thumb||''); }
+    else if(a==='author') actions.pulsAuthor(id); return }
+  if(e.target.dataset.act==='cta'){ actions.feedUploadModal(); return }
+  const vid=e.target.closest('.pp-reel video'); if(vid){ vid.muted=!vid.muted; if(!vid.muted) vid.play().catch(()=>{}) } }
+function pulsPanelDbl(e){ const it=e.target.closest('.pp-reel'); if(!it) return; const p2=pulsReels()[+it.dataset.i]; if(!p2||p2.seed) return
+  if(!FEED.mine[p2.id]) actions.feedLike(p2.id)
+  const h=document.createElement('div'); h.className='pr-burst'; h.textContent='♥'; it.appendChild(h); setTimeout(()=>h.remove(),700)
+  const lb=it.querySelector('[data-a="like"]'); if(lb){ lb.classList.add('on'); lb.innerHTML='♥<i>'+(FEED.likes[p2.id]||0)+'</i>' } }
+function pulsOpen(tab,idx){ if(PULS.panel||!pulsFlagOn()) return
+  PULS.tab=tab||'reels'; if(typeof idx==='number') PULS.idx=idx
+  const t=document.createElement('div'); t.id='pulsPanel'; t.className=(state.mode==='nacht'?'night':''); t.innerHTML=pulsPanelShell()
+  document.body.appendChild(t); PULS.panel=t
+  pulsPanelBody(); requestAnimationFrame(()=>t.classList.add('in'))
+  t.addEventListener('click',pulsPanelClick); t.addEventListener('dblclick',pulsPanelDbl)
+  PULS._key=e=>{ if(e.key==='Escape') pulsClose()
+    else if((e.key==='ArrowDown'||e.key==='ArrowUp')&&PULS.tab==='reels'){ const sc=t.querySelector('.pp-reels'); if(sc){ sc.scrollBy({top:(e.key==='ArrowDown'?1:-1)*sc.clientHeight,behavior:'smooth'}); e.preventDefault() } } }
+  addEventListener('keydown',PULS._key); pulsPauseSync() }
+function pulsClose(){ const t=PULS.panel; if(!t) return; PULS.panel=null
+  if(PULS._io){ PULS._io.disconnect(); PULS._io=null }
+  if(PULS._key){ removeEventListener('keydown',PULS._key); PULS._key=null }
   t.querySelectorAll('video').forEach(v=>{ try{v.pause()}catch(e){} })
-  t.classList.remove('in'); t.classList.add('out')   // weiches Schrumpfen zurück Richtung Mini-Fenster
-  setTimeout(()=>t.remove(),240)
-  pulsPauseSync(); pulsRender() }
+  t.classList.remove('in'); setTimeout(()=>t.remove(),260); pulsPauseSync(); pulsRender() }
+/* Alias für den In-World-Puls (Litfaßsäule/Board öffnen das v3-Panel im Reels-Tab) */
+function pulsOpenTheater(idx){ pulsOpen('reels',typeof idx==='number'?idx:0) }
 /* Client-Thumbnail beim Upload (Canvas-Frame-Grab) — das Fenster braucht damit nie Video-Decode */
 function pulsThumb(file,isVid,cb){ try{
   if(!isVid){ const im=new Image(); im.onload=()=>{ const s=Math.min(1,480/im.width)
@@ -3327,66 +3361,77 @@ const actions={
    toast('Du bist „'+g.name+'“ beigetreten',freeJ?'Erster Beitritt kostenlos.':'1 Credit eingelöst · Guthaben: '+credits()+' Credits')
    render() },
  feedUploadModal(){ if(!SB_USER){ toast('Bitte einloggen','Poste mit deiner Uni-Mail — Login im Profil.','info'); return }
-   if(!FLAGS.feed){ toast('Feed pausiert','Posten ist gerade deaktiviert (Wartung/Moderation).','info'); return }
-   const mods=(DB.user.modules||[]).map(m=>String((m&&m.name)||m)).filter(Boolean)
-   const secPlace=state.section==='aktivitaeten'?'Lagerfeuer':'Studierendenhaus' // aktueller 3D-Ort als vorgewählter Chip
-   openModal('<div class="eyebrow">Campus Puls</div><h3>Was läuft gerade?</h3>'+
-    '<label>Foto (JPG/PNG ≤ 10 MB) oder Video (MP4/WebM ≤ 60 s, ≤ 50 MB) — optional</label><input type="file" id="fd-file" accept="image/jpeg,image/png,video/mp4,video/webm" onchange="actions.feedPickPreview(this)">'+
-    '<div id="fd-prev"></div>'+
-    '<label>Caption (≤ 300 Zeichen)</label><textarea id="fd-cap" maxlength="300" rows="3" placeholder="Zeig deinen Campus …"></textarea>'+
-    '<label>Modul-Tag (optional)</label><input id="fd-mod" maxlength="60" list="fd-modl" placeholder="z. B. Mathe 2"><datalist id="fd-modl">'+mods.map(m=>'<option value="'+esc(m)+'">').join('')+'</datalist>'+
-    '<label>Aktivitäts-Tag (optional)</label><input id="fd-act" maxlength="60" list="fd-actl" placeholder="z. B. Bouldern"><datalist id="fd-actl">'+ACTIVITIES.map(a=>'<option value="'+esc(a.n)+'">').join('')+'</datalist>'+
-    '<label>Ort (zeigt deinen Beitrag als Bubble in der 3D-Welt)</label><select id="fd-place"><option value="">— kein Ort —</option>'+Object.keys(PULS_PLACES).map(p2=>'<option'+(p2===secPlace?' selected':'')+'>📍 '+p2+'</option>').join('')+'</select>'+
-    '<div class="mrow"><button class="btn ghost" onclick="closeModal()">Abbrechen</button>'+
-    '<button class="btn grad" id="fd-go" onclick="actions.feedUpload()">Posten</button></div>'+
-    '<p class="hint">Tipp: Videos vorher kürzen (≤ 60 s). Captions & Tags werden moderiert; ab 3 Meldungen wird ausgeblendet. Löschen entfernt auch die Dateien (DSGVO).</p>') },
- feedPickPreview(inp){ const pv=document.getElementById('fd-prev'); if(!pv) return
+   if(!FLAGS.puls&&!FLAGS.feed){ toast('Puls pausiert','Posten ist gerade deaktiviert (Wartung/Moderation).','info'); return }
+   const reel=(PULS.tab!=='posts') // FAB/CTA adaptiv zum aktiven Tab; keine Tag-/Modul-/Ort-Felder (Scope kommt aus dem Autorprofil)
+   state._fdKind=reel?'reel':'post'; state._fdMode='img'
+   if(reel){ openModal('<div class="eyebrow">Campus Puls</div><h3>Reel posten</h3>'+
+     '<label>Video (MP4/WebM ≤ 60 s, ≤ 50 MB)</label><input type="file" id="fd-file" accept="video/mp4,video/webm" onchange="actions.feedPickPreview()">'+
+     '<div id="fd-prev"></div>'+
+     '<label>Caption (optional, ≤ 150)</label><textarea id="fd-cap" maxlength="150" rows="2" oninput="actions.fdCount()" placeholder="Was läuft gerade?"></textarea><div class="fd-count" id="fd-cnt">0/150</div>'+
+     '<div class="mrow"><button class="btn ghost" onclick="closeModal()">Abbrechen</button><button class="btn grad" id="fd-go" disabled onclick="actions.feedUpload()">Posten</button></div>'+
+     '<p class="hint">Auto-Vorschaubild wird erzeugt; die Caption läuft durch die Moderation.</p>')
+   } else { openModal('<div class="eyebrow">Campus Puls</div><h3>Post erstellen</h3>'+
+     '<div class="fd-seg"><button type="button" id="fd-m-img" class="on" onclick="actions.fdMode(\'img\')">Bild + Text</button><button type="button" id="fd-m-txt" onclick="actions.fdMode(\'txt\')">Nur Text</button></div>'+
+     '<div id="fd-imgrow"><label>Bild (JPG/PNG ≤ 10 MB)</label><input type="file" id="fd-file" accept="image/jpeg,image/png" onchange="actions.feedPickPreview()"><div id="fd-prev"></div></div>'+
+     '<label>Text (≤ 300)</label><textarea id="fd-txt" maxlength="300" rows="4" oninput="actions.fdCount()" placeholder="Zeig deinen Campus …"></textarea><div class="fd-count" id="fd-cnt">0/300</div>'+
+     '<div class="mrow"><button class="btn ghost" onclick="closeModal()">Abbrechen</button><button class="btn grad" id="fd-go" disabled onclick="actions.feedUpload()">Posten</button></div>'+
+     '<p class="hint">Links (https) werden verlinkt; der Text läuft durch die Moderation.</p>') }
+   actions.fdCount() },
+ fdMode(m){ state._fdMode=m
+   const bi=document.getElementById('fd-m-img'), bt=document.getElementById('fd-m-txt'); if(bi)bi.classList.toggle('on',m==='img'); if(bt)bt.classList.toggle('on',m==='txt')
+   const ir=document.getElementById('fd-imgrow'); if(ir) ir.style.display=m==='img'?'':'none'; actions.fdCount() },
+ fdCount(){ const isReel=state._fdKind==='reel'
+   const ta=document.getElementById(isReel?'fd-cap':'fd-txt'), cnt=document.getElementById('fd-cnt')
+   const max=isReel?150:300, len=(ta&&ta.value||'').trim().length; if(cnt) cnt.textContent=(ta&&ta.value||'').length+'/'+max
+   const go=document.getElementById('fd-go'); if(!go) return
+   const hasFile=!!((document.getElementById('fd-file')||{}).files||[])[0]
+   go.disabled=!(isReel?hasFile:(state._fdMode==='img'?(hasFile&&len>0):len>0)) },
+ feedPickPreview(){ const pv=document.getElementById('fd-prev')
    if(state._fdPrevUrl){ URL.revokeObjectURL(state._fdPrevUrl); state._fdPrevUrl=null }
-   const f=(inp.files||[])[0]; if(!f){ pv.innerHTML=''; return }
-   if(f.type.indexOf('image/')===0){ state._fdPrevUrl=URL.createObjectURL(f)
-     pv.innerHTML='<img src="'+state._fdPrevUrl+'" alt="Vorschau">' }
-   else pv.innerHTML='<span class="fd-vchip">🎬 '+esc(f.name.slice(0,32))+' · '+(f.size/1048576).toFixed(1)+' MB</span>' },
- feedUpload(){ const f=(document.getElementById('fd-file').files||[])[0], cap=(document.getElementById('fd-cap').value||'').trim()
-   const mod=(document.getElementById('fd-mod').value||'').trim().slice(0,60), act=(document.getElementById('fd-act').value||'').trim().slice(0,60)
-   const place=(document.getElementById('fd-place').value||'').replace('📍 ','').trim()
-   if(!f&&!cap){ toast('Bitte Datei oder Text angeben','','info'); return }
-   const bad=modCheck(cap)||modCheck(mod)||modCheck(act)
-   if(bad){ const r=modStrike(bad,cap||mod||act); if(r.banned){ closeModal(); render() } return }
+   const f=((document.getElementById('fd-file')||{}).files||[])[0]
+   if(pv){ if(!f) pv.innerHTML=''
+     else if(f.type.indexOf('image/')===0){ state._fdPrevUrl=URL.createObjectURL(f); pv.innerHTML='<img src="'+state._fdPrevUrl+'" alt="Vorschau">' }
+     else pv.innerHTML='<span class="fd-vchip">🎬 '+esc(f.name.slice(0,32))+' · '+(f.size/1048576).toFixed(1)+' MB</span>' }
+   actions.fdCount() },
+ feedUpload(){ const isReel=state._fdKind==='reel', wantImg=!isReel&&state._fdMode==='img'
+   const f=((document.getElementById('fd-file')||{}).files||[])[0]
+   const cap=isReel?(document.getElementById('fd-cap').value||'').trim().slice(0,150):''
+   const txt=!isReel?(document.getElementById('fd-txt').value||'').trim().slice(0,300):''
+   const modText=isReel?cap:txt
+   if(modText){ const bad=modCheck(modText); if(bad){ const r=modStrike(bad,modText); if(r.banned){ closeModal(); render() } return } }
    const go=document.getElementById('fd-go'); const reset=()=>{ if(go){ go.disabled=false; go.textContent='Posten' } }
-   const finish=(type,path,thumb)=>{
-     const full={author:SB_USER.id,type,storage_path:path,thumb_path:thumb||null,caption:cap||null,module_tag:mod||null,activity_tag:act||null,place_tag:place||null}
-     const base={author:SB_USER.id,type,storage_path:path,caption:cap||null,activity_tag:act||null} // nur 01-feed.sql-Spalten
-     const ok=()=>{ closeModal(); PULS.optimistic=null; toast('Gepostet ✓','Dein Beitrag pulsiert jetzt auf dem Campus.'); feedLoad(true) }
-     const fail=msg=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Posten fehlgeschlagen',String(msg||'Bitte später erneut versuchen.').slice(0,140),'info') }
-     window.__sb.from('posts').insert(full).then(r=>{
-       if(!r.error){ ok(); return }
-       const msg=String(r.error.message||r.error.hint||'')
-       if(/column|schema cache|thumb_path|module_tag|place_tag/i.test(msg)){ // 04-puls.sql noch nicht ausgeführt → Basis-Insert, damit der Beitrag TROTZDEM landet
-         window.__sb.from('posts').insert(base).then(r2=>{ if(r2.error){ fail(r2.error.message); return }
-           closeModal(); PULS.optimistic=null; toast('Gepostet ✓','Ohne Tags/Vorschau — führe 04-puls.sql in Supabase aus, um alle Puls-Funktionen zu aktivieren.'); feedLoad(true) }).catch(()=>fail())
-         return }
-       fail(msg) }).catch(()=>fail()) }
-   if(!f){ if(go){ go.disabled=true; go.textContent='Postet …' } PULS.optimistic={cap}; pulsRender(); finish('text',null,null); return }
-   const okImg=['image/jpeg','image/png'], okVid=['video/mp4','video/webm'], isVid=okVid.includes(f.type)
-   if(!isVid&&!okImg.includes(f.type)){ toast('Dateityp nicht erlaubt','Nur JPG, PNG, MP4 oder WebM.','info'); return }
-   if(!isVid&&f.size>10*1024*1024){ toast('Bild zu groß','Max. 10 MB — bitte komprimieren.','info'); return }
-   if(isVid&&f.size>50*1024*1024){ toast('Video zu groß','Max. 50 MB / 60 s.','info'); return }
    if(go){ go.disabled=true; go.textContent='Lädt hoch …' }
-   PULS.optimistic={cap}; pulsRender()   // optimistische Karte sofort im Puls-Fenster
-   const doUpload=()=>{ const ext=(f.name.split('.').pop()||'bin').toLowerCase(), base=uid()
-     const path='feed/'+SB_USER.id+'/'+base+'.'+ext
-     window.__sb.storage.from('media').upload(path,f,{contentType:f.type}).then(r=>{
-       if(r.error){ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info'); return }
-       pulsThumb(f,isVid,tb=>{ if(!tb){ finish(isVid?'video':'image',path,null); return } // Thumb best-effort — Post geht auch ohne raus
-         const tpath='feed/'+SB_USER.id+'/'+base+'_t.jpg'
-         window.__sb.storage.from('media').upload(tpath,tb,{contentType:'image/jpeg'})
-           .then(rr=>finish(isVid?'video':'image',path,rr.error?null:tpath))
-           .catch(()=>finish(isVid?'video':'image',path,null)) }) }).catch(()=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info') }) }
-   if(isVid){ const v=document.createElement('video'); v.preload='metadata'
-     v.onloadedmetadata=()=>{ URL.revokeObjectURL(v.src)
-       if(isFinite(v.duration)&&v.duration>61){ toast('Video zu lang','Max. 60 Sekunden.','info'); PULS.optimistic=null; pulsRender(); reset(); return } doUpload() } // Infinity/NaN (z. B. MediaRecorder-WebM) nicht fälschlich blocken — Größe deckelt schon
-     v.onerror=()=>{ doUpload() }; v.src=URL.createObjectURL(f) }
-   else doUpload() },
+   PULS.optimistic={}; pulsRender()
+   const finish=(mt,path,thumb)=>{
+     const full={author:SB_USER.id,kind:isReel?'reel':'post',media_type:mt,storage_path:path||null,thumb_path:thumb||null,
+       caption:isReel?(cap||null):null,text:isReel?null:(txt||null),type:mt==='video'?'video':(mt==='image'?'image':'text')}
+     const base={author:SB_USER.id,type:full.type,storage_path:path||null,caption:isReel?(cap||null):(txt||null)} // nur 01-feed.sql-Spalten
+     const ok=n=>{ closeModal(); PULS.optimistic=null; toast('Gepostet ✓',n); feedLoad(true) }
+     const fail=msg=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Posten fehlgeschlagen',String(msg||'Bitte später erneut versuchen.').slice(0,140),'info') }
+     window.__sb.from('posts').insert(full).then(r=>{ if(!r.error){ ok(isReel?'Dein Reel pulsiert jetzt auf dem Campus.':'Dein Post ist im Feed.'); return }
+       const msg=String(r.error.message||r.error.hint||'')
+       if(/column|schema cache|kind|media_type|\btext\b/i.test(msg)){ // 06-puls-v3.sql noch nicht ausgeführt → Basis-Insert
+         window.__sb.from('posts').insert(base).then(r2=>{ if(r2.error){ fail(r2.error.message); return } ok('Führe 06-puls-v3.sql aus, um Reels/Posts + Scope voll zu aktivieren.') }).catch(()=>fail()); return }
+       fail(msg) }).catch(()=>fail()) }
+   if(isReel){ if(!f){ toast('Bitte ein Video wählen','','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     if(f.type!=='video/mp4'&&f.type!=='video/webm'){ toast('Nur MP4 oder WebM','','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     if(f.size>50*1024*1024){ toast('Video zu groß','Max. 50 MB / 60 s.','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     const up=()=>{ const ext=(f.name.split('.').pop()||'mp4').toLowerCase(), b=uid(), path='feed/'+SB_USER.id+'/'+b+'.'+ext
+       window.__sb.storage.from('media').upload(path,f,{contentType:f.type}).then(r=>{ if(r.error){ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info'); return }
+         pulsThumb(f,true,tb=>{ if(!tb){ finish('video',path,null); return } const tp='feed/'+SB_USER.id+'/'+b+'_t.jpg'
+           window.__sb.storage.from('media').upload(tp,tb,{contentType:'image/jpeg'}).then(rr=>finish('video',path,rr.error?null:tp)).catch(()=>finish('video',path,null)) }) }).catch(()=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info') }) }
+     const v=document.createElement('video'); v.preload='metadata'
+     v.onloadedmetadata=()=>{ URL.revokeObjectURL(v.src); if(isFinite(v.duration)&&v.duration>61){ toast('Video zu lang','Max. 60 Sekunden.','info'); PULS.optimistic=null; pulsRender(); reset(); return } up() } // Infinity/NaN nicht fälschlich blocken
+     v.onerror=()=>up(); v.src=URL.createObjectURL(f) }
+   else if(wantImg){ if(!f){ toast('Bitte ein Bild wählen','','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     if(f.type!=='image/jpeg'&&f.type!=='image/png'){ toast('Nur JPG/PNG','','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     if(f.size>10*1024*1024){ toast('Bild zu groß','Max. 10 MB.','info'); reset(); PULS.optimistic=null; pulsRender(); return }
+     const ext=f.type==='image/png'?'png':'jpg', b=uid(), path='feed/'+SB_USER.id+'/'+b+'.'+ext
+     window.__sb.storage.from('media').upload(path,f,{contentType:f.type}).then(r=>{ if(r.error){ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info'); return }
+       pulsThumb(f,false,tb=>{ if(!tb){ finish('image',path,null); return } const tp='feed/'+SB_USER.id+'/'+b+'_t.jpg'
+         window.__sb.storage.from('media').upload(tp,tb,{contentType:'image/jpeg'}).then(rr=>finish('image',path,rr.error?null:tp)).catch(()=>finish('image',path,null)) }) }).catch(()=>{ closeModal(); PULS.optimistic=null; pulsRender(); toast('Upload fehlgeschlagen','','info') }) }
+   else finish('none',null,null) },
+
  pulsComments(pid){ if(!window.__sb||!SB_USER){ toast('Bitte einloggen','','info'); return }
    window.__sb.from('post_comments').select('*').eq('post_id',pid).order('created_at',{ascending:true}).limit(100).then(r=>{
      const list=r.data||[]; PULS.counts[pid]=list.length
@@ -3417,7 +3462,7 @@ const actions={
    '<p class="sub">Kommilo zeigt im Puls bewusst nur ein Alias — keine Follower, kein Ranking von Personen.</p>'+
    '<div class="mrow"><button class="btn ghost sm" onclick="actions.pulsBlock(\''+esc(aid)+'\')">Blockieren</button>'+
    '<button class="btn ghost sm" onclick="closeModal()">Schließen</button></div>') },
- pulsBlock(aid){ actions.feedBlock(aid); closeModal(); pulsTheaterRebuild(); pulsRender() },
+ pulsBlock(aid){ actions.feedBlock(aid); closeModal(); pulsPanelRefresh(); pulsRender() },
  cprjSearch(q){ CPRJ.q=q; render() },
  cprjOpen(pid){ if(!window.__sb||!SB_USER) return
    window.__sb.from('projects').select('*').eq('id',pid).single().then(async r=>{ const pr=r.data; if(!pr) return
@@ -3444,7 +3489,7 @@ const actions={
      FEED.items=FEED.items.filter(x=>x.id!==pid); render()
      toast('Gemeldet','Danke — ab 3 Meldungen wird der Beitrag ausgeblendet und geprüft.') }).catch(()=>{}) },
  feedBlock(author){ if(!(DB.user.blockedUsers||[]).includes(author)){ DB.user.blockedUsers.push(author); saveDB() }
-   FEED.items=FEED.items.filter(x=>x.author!==author); render(); pulsTheaterRebuild(); pulsRender()
+   FEED.items=FEED.items.filter(x=>x.author!==author); render(); pulsPanelRefresh(); pulsRender()
    toast('Nutzer blockiert','Du siehst keine Inhalte dieser Person mehr.') },
  feedDelete(pid,path,thumb){ if(!window.__sb||!SB_USER) return
    const done=()=>window.__sb.from('posts').delete().eq('id',pid).then(()=>{ feedLoad(true); toast('Gelöscht','Beitrag und Dateien wurden entfernt (DSGVO).') }).catch(()=>{})
@@ -3742,7 +3787,7 @@ const actions={
    const req=['p-name','p-age','p-prog','p-sem','p-lang','p-avail','p-goal']
    if(req.some(id=>!document.getElementById(id).value.trim())){ document.getElementById('ob-err').textContent='Bitte alle Pflichtfelder ausfüllen (Geschlecht ist optional).'; return }
    Object.assign(DB.user.profile,{complete:true,name:g('p-name'),age:g('p-age'),gender:g('p-gender'),pronouns:g('p-pron').slice(0,20),program:g('p-prog'),degree:document.getElementById('p-degree').value,semester:g('p-sem'),language:g('p-lang'),learnMode:document.getElementById('p-mode').value,availability:g('p-avail'),goal:g('p-goal')})
-   saveDB(); render() },
+   saveDB(); syncProfileScope(); render() },
  policyInfo(){ toast('Geschützte Lernräume',POLICY_LEGAL,'info') },
  genderGateSave(){ DB.user.profile.gender=document.getElementById('gg-sel').value; saveDB(); closeModal()
    const cb=state._genderGateOk; state._genderGateOk=null; if(cb) cb() },
@@ -3758,7 +3803,7 @@ const actions={
  obAddModule(){ DB.user.modules.push({name:'',total:'',lecture:'',exercise:'',tutorial:'',self:'',exam:'',attempt:'1. Versuch',status:MODULE_STATI[0]}); saveDB(); render() },
  obModField(i,k,v){ DB.user.modules[i][k]=(k==='name'||k==='attempt'||k==='status')?v:Math.max(0,Math.min(100,+v||0)); saveDB() },
  obModulesDone(){ if(!DB.user.modules.length||DB.user.modules.some(m=>!moduleComplete(m))){ document.getElementById('ob-err').textContent='Ohne vollständigen Modulfortschritt kein Zugriff auf Matching, Gruppen, Chat oder Club Unterlagen.'; return }
-   saveDB(); notify('Willkommen bei Kommilo','Bei uns zählt nicht dein Gesicht — sondern dein Lernziel.','info'); render() },
+   saveDB(); syncProfileScope(); notify('Willkommen bei Kommilo','Bei uns zählt nicht dein Gesicht — sondern dein Lernziel.','info'); render() },
  obReset(){ localStorage.removeItem('wlt_db_v1'); location.reload() }
 }
 window.actions=actions; window.closeModal=closeModal
@@ -4777,7 +4822,7 @@ function verifySitePlan(){
   return out }
 /* Einziger 3D-Tuning-Handle: Werte in .config ändern, dann .applyMode() — ersetzt die alten window.__*-Streuungen */
 window.__kommilo3d={ config:sceneConfig, applyMode, setQualityTier, tier:()=>qualityTier, gpu:()=>GPU_RENDERER, build:()=>window.__BUILD, camera, controls, renderer, composer, scene, sun, info:()=>renderer.info.render, verifySitePlan,
-  puls:{ open:pulsOpenTheater, close:pulsCloseTheater, sync:pulsSync, state:PULS }, // Live-Tuning/QA-Handle für Campus Puls (wie config/applyMode)
+  puls:{ open:pulsOpenTheater, close:pulsClose, sync:pulsSync, state:PULS }, // Live-Tuning/QA-Handle für Campus Puls (wie config/applyMode)
   /* dev: echte Szenen-Drawcalls messen (Composer-info spiegelt sonst nur den letzten Fullscreen-Pass) */
   sceneDraw:()=>{ const a=renderer.info.autoReset; renderer.info.autoReset=false; renderer.info.reset(); renderer.render(scene,camera)
     const r={calls:renderer.info.render.calls,tris:renderer.info.render.triangles}; renderer.info.autoReset=a; return r },
